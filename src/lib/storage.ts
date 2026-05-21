@@ -219,6 +219,54 @@ export async function deleteSnapshotsForDate(
   if (error) throw error;
 }
 
+// Edit an existing snapshot — overwrite category values and/or move it to a
+// different date. `values` maps category_id -> kr value. The grand-total row
+// is computed automatically as the sum of all category values.
+export async function replaceSnapshot(
+  userId: string,
+  originalDate: string,
+  newDate: string,
+  values: Map<string, number>,
+  notes?: string,
+): Promise<void> {
+  // If the date moved, drop the old day entirely first so we don't leave orphans.
+  if (originalDate !== newDate) {
+    await deleteSnapshotsForDate(userId, originalDate);
+  } else {
+    // Same date — clear out any categories the user removed before re-inserting.
+    await deleteSnapshotsForDate(userId, newDate);
+  }
+
+  const rows: Omit<SnapshotRow, "created_at">[] = [];
+  let total = 0;
+  for (const [categoryId, value] of values) {
+    if (categoryId === TOTAL_CATEGORY_ID) continue; // recomputed below
+    rows.push({
+      id: `${userId}:${newDate}:${categoryId}`,
+      user_id: userId,
+      date: newDate,
+      category_id: categoryId,
+      value,
+      notes: notes ?? null,
+    });
+    total += value;
+  }
+  rows.push({
+    id: `${userId}:${newDate}:${TOTAL_CATEGORY_ID}`,
+    user_id: userId,
+    date: newDate,
+    category_id: TOTAL_CATEGORY_ID,
+    value: total,
+    notes: notes ?? null,
+  });
+
+  if (rows.length === 1) return; // only the total row — no real data, nothing to save
+  const { error } = await supabase
+    .from("snapshots")
+    .upsert(rows, { onConflict: "user_id,date,category_id" });
+  if (error) throw error;
+}
+
 // One-time backfill of March + April 2026 historical data from the spreadsheet.
 // Uses upsert so re-clicking the button is harmless.
 export async function backfillHistoricalSnapshots(userId: string): Promise<number> {

@@ -18,6 +18,7 @@ import {
 } from "../lib/types";
 import { formatDKK } from "../lib/format";
 import { backfillHistoricalSnapshots, deleteSnapshotsForDate } from "../lib/storage";
+import { SnapshotEditModal } from "./SnapshotEditModal";
 
 type Props = {
   userId: string;
@@ -48,6 +49,7 @@ export function HistoryView({
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [backfilling, setBackfilling] = useState(false);
   const [backfillError, setBackfillError] = useState<string | null>(null);
+  const [editingDate, setEditingDate] = useState<string | null>(null);
 
   // Build the chart data: one object per date with one key per category.
   // Add a synthetic "today" point computed from the live items so the chart
@@ -246,7 +248,9 @@ export function HistoryView({
                   return (
                     <tr
                       key={date}
-                      className="border-t border-neutral-100 hover:bg-neutral-50 group"
+                      className="border-t border-neutral-100 hover:bg-neutral-50 group cursor-pointer"
+                      onClick={() => setEditingDate(date)}
+                      title="Klik for at redigere"
                     >
                       <td className="px-4 py-2">{date}</td>
                       <td className="px-4 py-2 text-right tabular-nums font-medium">
@@ -254,7 +258,10 @@ export function HistoryView({
                       </td>
                       <td className="px-2 py-2 text-right">
                         <button
-                          onClick={() => handleDeleteDate(date)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteDate(date);
+                          }}
                           className="opacity-0 group-hover:opacity-100 transition-opacity text-xs px-2 py-1 rounded hover:bg-red-100 hover:text-red-700 text-neutral-600"
                           title="Slet snapshot"
                         >
@@ -269,6 +276,16 @@ export function HistoryView({
           </div>
         </div>
       )}
+
+      <SnapshotEditModal
+        open={editingDate !== null}
+        userId={userId}
+        date={editingDate}
+        snapshots={snapshots}
+        categories={data.categories}
+        onClose={() => setEditingDate(null)}
+        onSaved={onSnapshotsChanged}
+      />
     </div>
   );
 }
