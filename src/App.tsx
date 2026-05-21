@@ -37,6 +37,7 @@ function TrackerApp({ session }: { session: Session }) {
 
   const [itemModalOpen, setItemModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
+  const [addingChildOf, setAddingChildOf] = useState<Item | null>(null);
 
   const [catModalOpen, setCatModalOpen] = useState(false);
   const [editingCat, setEditingCat] = useState<Category | null>(null);
@@ -84,19 +85,32 @@ function TrackerApp({ session }: { session: Session }) {
     [data.categories],
   );
 
+  // Top-level items only — children are rendered inside their parent.
+  // Search matches children too: if a child matches, also include its parent.
   const filteredItems = useMemo(() => {
-    let list = data.items;
-    if (selected !== "all") list = list.filter((i) => i.categoryId === selected);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(
-        (i) =>
-          i.name.toLowerCase().includes(q) ||
-          i.set?.toLowerCase().includes(q) ||
-          i.version?.toLowerCase().includes(q),
-      );
+    const isInCat = (i: Item) =>
+      selected === "all" || i.categoryId === selected;
+    const q = search.trim().toLowerCase();
+    const matches = (i: Item) =>
+      !q ||
+      i.name.toLowerCase().includes(q) ||
+      i.set?.toLowerCase().includes(q) ||
+      i.version?.toLowerCase().includes(q);
+
+    if (!q) {
+      return data.items.filter((i) => !i.parentId && isInCat(i));
     }
-    return list;
+    // With search: include any top-level item that matches OR whose child matches
+    const parentIdsWithMatchingChild = new Set<string>();
+    for (const i of data.items) {
+      if (i.parentId && matches(i)) parentIdsWithMatchingChild.add(i.parentId);
+    }
+    return data.items.filter(
+      (i) =>
+        !i.parentId &&
+        isInCat(i) &&
+        (matches(i) || parentIdsWithMatchingChild.has(i.id)),
+    );
   }, [data.items, selected, search]);
 
   const currentCategory =
@@ -104,11 +118,19 @@ function TrackerApp({ session }: { session: Session }) {
 
   function handleAddItem() {
     setEditingItem(null);
+    setAddingChildOf(null);
     setItemModalOpen(true);
   }
 
   function handleEditItem(item: Item) {
     setEditingItem(item);
+    setAddingChildOf(null);
+    setItemModalOpen(true);
+  }
+
+  function handleAddChild(parent: Item) {
+    setEditingItem(null);
+    setAddingChildOf(parent);
     setItemModalOpen(true);
   }
 
@@ -396,12 +418,14 @@ function TrackerApp({ session }: { session: Session }) {
           {view === "list" ? (
             <ItemTable
               items={filteredItems}
+              allItems={data.items}
               category={currentCategory}
               categoriesById={categoriesById}
               editMode={editMode}
               onEdit={handleEditItem}
               onDelete={handleDeleteItem}
               onUpdateValue={handleUpdateItemValue}
+              onAddChild={handleAddChild}
             />
           ) : (
             <HistoryView
@@ -419,9 +443,11 @@ function TrackerApp({ session }: { session: Session }) {
         initial={editingItem}
         categories={data.categories}
         defaultCategoryId={selected !== "all" ? selected : undefined}
+        parent={addingChildOf}
         onClose={() => {
           setItemModalOpen(false);
           setEditingItem(null);
+          setAddingChildOf(null);
         }}
         onSubmit={handleSubmitItem}
       />

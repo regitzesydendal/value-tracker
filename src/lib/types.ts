@@ -19,6 +19,8 @@ export type Item = {
   notes?: string;
   isPending?: boolean; // "Ingående lager" — potential buy / incoming stock
   marketplaceUrl?: string; // e.g. Cardmarket / TCGPlayer / eBay listing URL
+  isContainer?: boolean; // true = can have child items (e.g. "Collectr" holding many cards)
+  parentId?: string;     // points to another item.id if this is a child
   createdAt: string;
   updatedAt: string;
 };

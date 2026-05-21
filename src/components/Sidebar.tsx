@@ -16,9 +16,15 @@ export function Sidebar({
   onSelect,
   onAddCategory,
 }: Props) {
-  const grandTotal = items.reduce((sum, i) => sum + (i.currentValue || 0), 0);
+  // Children are "inside" a parent — only count top-level items in the totals
+  // so we don't double-count.
+  const topLevelItems = items.filter((i) => !i.parentId);
+  const grandTotal = topLevelItems.reduce(
+    (sum, i) => sum + (i.currentValue || 0),
+    0,
+  );
   const totalsByCategory = new Map<string, number>();
-  for (const item of items) {
+  for (const item of topLevelItems) {
     totalsByCategory.set(
       item.categoryId,
       (totalsByCategory.get(item.categoryId) || 0) + (item.currentValue || 0),
@@ -49,13 +55,13 @@ export function Sidebar({
         >
           <span>Alle</span>
           <span className="tabular-nums text-xs opacity-80">
-            {items.length}
+            {topLevelItems.length}
           </span>
         </button>
 
         {sorted.map((cat) => {
           const total = totalsByCategory.get(cat.id) || 0;
-          const count = items.filter((i) => i.categoryId === cat.id).length;
+          const count = topLevelItems.filter((i) => i.categoryId === cat.id).length;
           const active = selectedId === cat.id;
           return (
             <button

@@ -7,6 +7,7 @@ type Props = {
   initial?: Item | null;
   categories: Category[];
   defaultCategoryId?: string;
+  parent?: Item | null; // if set, this is creating/editing a child of `parent`
   onClose: () => void;
   onSubmit: (
     data: Omit<Item, "id" | "createdAt" | "updatedAt"> & { id?: string },
@@ -18,6 +19,7 @@ export function ItemFormModal({
   initial,
   categories,
   defaultCategoryId,
+  parent,
   onClose,
   onSubmit,
 }: Props) {
@@ -31,6 +33,7 @@ export function ItemFormModal({
   const [notes, setNotes] = useState("");
   const [isPending, setIsPending] = useState(false);
   const [marketplaceUrl, setMarketplaceUrl] = useState("");
+  const [isContainer, setIsContainer] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -45,8 +48,10 @@ export function ItemFormModal({
       setNotes(initial.notes ?? "");
       setIsPending(!!initial.isPending);
       setMarketplaceUrl(initial.marketplaceUrl ?? "");
+      setIsContainer(!!initial.isContainer);
     } else {
-      setCategoryId(defaultCategoryId || categories[0]?.id || "");
+      // When adding a child, lock category to the parent's category.
+      setCategoryId(parent?.categoryId || defaultCategoryId || categories[0]?.id || "");
       setName("");
       setSerial("");
       setVersion("");
@@ -56,8 +61,9 @@ export function ItemFormModal({
       setNotes("");
       setIsPending(false);
       setMarketplaceUrl("");
+      setIsContainer(false);
     }
-  }, [open, initial, defaultCategoryId, categories]);
+  }, [open, initial, defaultCategoryId, categories, parent]);
 
   if (!open) return null;
 
@@ -79,8 +85,13 @@ export function ItemFormModal({
       notes: notes.trim() || undefined,
       isPending: isPending || undefined,
       marketplaceUrl: marketplaceUrl.trim() || undefined,
+      isContainer: isContainer || undefined,
+      // Preserve parentId when editing; set from parent prop when creating a child
+      parentId: initial?.parentId ?? parent?.id ?? undefined,
     });
   }
+
+  const isChild = !!parent || !!initial?.parentId;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
@@ -88,25 +99,36 @@ export function ItemFormModal({
         <form onSubmit={handleSubmit}>
           <div className="px-6 py-4 border-b border-neutral-200">
             <h2 className="text-lg font-semibold">
-              {initial ? "Rediger" : "Tilføj"} element
+              {initial
+                ? "Rediger element"
+                : parent
+                  ? `Tilføj kort under "${parent.name}"`
+                  : "Tilføj element"}
             </h2>
+            {isChild && !initial && (
+              <p className="text-xs text-neutral-500 mt-1">
+                Dette kort tæller ikke i kategori-totalen — det er "inde i" {parent?.name}.
+              </p>
+            )}
           </div>
 
           <div className="px-6 py-4 space-y-3">
-            <Field label="Kategori">
-              <select
-                value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                className="input"
-                required
-              >
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
+            {!isChild && (
+              <Field label="Kategori">
+                <select
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  className="input"
+                  required
+                >
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
 
             <Field label="Navn">
               <input
@@ -210,6 +232,22 @@ export function ItemFormModal({
                 </span>
               </span>
             </label>
+
+            {!isChild && (
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isContainer}
+                  onChange={(e) => setIsContainer(e.target.checked)}
+                />
+                <span>
+                  Container
+                  <span className="text-neutral-500 ml-1">
+                    (kan rumme kort, f.eks. "Collectr")
+                  </span>
+                </span>
+              </label>
+            )}
           </div>
 
           <div className="px-6 py-3 border-t border-neutral-200 flex justify-end gap-2 bg-neutral-50">

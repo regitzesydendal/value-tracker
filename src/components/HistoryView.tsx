@@ -69,7 +69,9 @@ export function HistoryView({
       const todayRow: Record<string, number> = {};
       let grandTotal = 0;
       const totalsByCategory = new Map<string, number>();
+      // Children belong to their parent — only top-level items count.
       for (const item of data.items) {
+        if (item.parentId) continue;
         totalsByCategory.set(
           item.categoryId,
           (totalsByCategory.get(item.categoryId) ?? 0) + (item.currentValue || 0),

@@ -31,6 +31,8 @@ type ItemRow = {
   notes: string | null;
   is_pending: boolean;
   marketplace_url: string | null;
+  is_container: boolean;
+  parent_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -57,6 +59,8 @@ function rowToItem(r: ItemRow): Item {
     notes: r.notes ?? undefined,
     isPending: r.is_pending,
     marketplaceUrl: r.marketplace_url ?? undefined,
+    isContainer: r.is_container,
+    parentId: r.parent_id ?? undefined,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -124,6 +128,8 @@ export async function upsertItem(userId: string, item: Item): Promise<void> {
     notes: item.notes ?? null,
     is_pending: item.isPending ?? false,
     marketplace_url: item.marketplaceUrl ?? null,
+    is_container: item.isContainer ?? false,
+    parent_id: item.parentId ?? null,
     updated_at: item.updatedAt,
   });
   if (error) throw error;
@@ -150,6 +156,8 @@ export async function insertItems(userId: string, items: Item[]): Promise<number
     notes: item.notes ?? null,
     is_pending: item.isPending ?? false,
     marketplace_url: item.marketplaceUrl ?? null,
+    is_container: item.isContainer ?? false,
+    parent_id: item.parentId ?? null,
     updated_at: item.updatedAt,
   }));
   const { error } = await supabase.from("items").insert(rows);
@@ -199,7 +207,9 @@ export async function takeSnapshot(
 ): Promise<void> {
   const totalsByCategory = new Map<string, number>();
   let grandTotal = 0;
+  // Children are "inside" their parent — only top-level items count.
   for (const item of data.items) {
+    if (item.parentId) continue;
     totalsByCategory.set(
       item.categoryId,
       (totalsByCategory.get(item.categoryId) ?? 0) + (item.currentValue || 0),
