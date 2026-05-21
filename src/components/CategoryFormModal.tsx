@@ -8,11 +8,30 @@ const allFields: { key: FieldKey; label: string }[] = [
   { key: "boughtFor", label: "Købt for (pris)" },
 ];
 
+// Fixed palette — keeps the UI consistent vs. arbitrary hex.
+export const categoryColorPalette: string[] = [
+  "#ef4444", // red
+  "#f97316", // orange
+  "#f59e0b", // amber
+  "#84cc16", // lime
+  "#10b981", // emerald
+  "#06b6d4", // cyan
+  "#3b82f6", // blue
+  "#8b5cf6", // violet
+  "#ec4899", // pink
+  "#6b7280", // gray
+];
+
 type Props = {
   open: boolean;
   initial?: Category | null;
   onClose: () => void;
-  onSubmit: (data: { id?: string; name: string; fields: FieldKey[] }) => void;
+  onSubmit: (data: {
+    id?: string;
+    name: string;
+    fields: FieldKey[];
+    color?: string;
+  }) => void;
   onDelete?: (id: string) => void;
 };
 
@@ -25,11 +44,13 @@ export function CategoryFormModal({
 }: Props) {
   const [name, setName] = useState("");
   const [fields, setFields] = useState<FieldKey[]>([]);
+  const [color, setColor] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (!open) return;
     setName(initial?.name ?? "");
     setFields(initial?.fields ?? []);
+    setColor(initial?.color);
   }, [open, initial]);
 
   if (!open) return null;
@@ -43,7 +64,7 @@ export function CategoryFormModal({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    onSubmit({ id: initial?.id, name: name.trim(), fields });
+    onSubmit({ id: initial?.id, name: name.trim(), fields, color });
   }
 
   return (
@@ -70,6 +91,40 @@ export function CategoryFormModal({
                 autoFocus
               />
             </label>
+
+            <div>
+              <div className="text-xs font-medium text-neutral-600 mb-2">
+                Farve
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setColor(undefined)}
+                  className={`w-7 h-7 rounded-full border-2 flex items-center justify-center text-neutral-400 text-xs ${
+                    !color
+                      ? "border-neutral-900"
+                      : "border-neutral-200 hover:border-neutral-400"
+                  }`}
+                  title="Ingen farve"
+                >
+                  ✕
+                </button>
+                {categoryColorPalette.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setColor(c)}
+                    className={`w-7 h-7 rounded-full border-2 ${
+                      color === c
+                        ? "border-neutral-900"
+                        : "border-transparent hover:border-neutral-300"
+                    }`}
+                    style={{ backgroundColor: c }}
+                    title={c}
+                  />
+                ))}
+              </div>
+            </div>
 
             <div>
               <div className="text-xs font-medium text-neutral-600 mb-2">

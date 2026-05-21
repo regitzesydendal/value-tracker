@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import type { Category, Item } from "../lib/types";
+import type { Category, Item, ItemLocation } from "../lib/types";
+import { itemLocationLabels, itemLocationOrder } from "../lib/types";
 import { parseAmount } from "../lib/format";
 
 type Props = {
@@ -34,6 +35,11 @@ export function ItemFormModal({
   const [isPending, setIsPending] = useState(false);
   const [marketplaceUrl, setMarketplaceUrl] = useState("");
   const [isContainer, setIsContainer] = useState(false);
+  const [wantMore, setWantMore] = useState(false);
+  const [desiredBuyPrice, setDesiredBuyPrice] = useState("");
+  const [forSale, setForSale] = useState(false);
+  const [askingPrice, setAskingPrice] = useState("");
+  const [location, setLocation] = useState<ItemLocation | "">("");
 
   useEffect(() => {
     if (!open) return;
@@ -49,6 +55,15 @@ export function ItemFormModal({
       setIsPending(!!initial.isPending);
       setMarketplaceUrl(initial.marketplaceUrl ?? "");
       setIsContainer(!!initial.isContainer);
+      setWantMore(!!initial.wantMore);
+      setDesiredBuyPrice(
+        initial.desiredBuyPrice != null ? String(initial.desiredBuyPrice) : "",
+      );
+      setForSale(!!initial.forSale);
+      setAskingPrice(
+        initial.askingPrice != null ? String(initial.askingPrice) : "",
+      );
+      setLocation(initial.location ?? "");
     } else {
       // When adding a child, lock category to the parent's category.
       setCategoryId(parent?.categoryId || defaultCategoryId || categories[0]?.id || "");
@@ -62,6 +77,11 @@ export function ItemFormModal({
       setIsPending(false);
       setMarketplaceUrl("");
       setIsContainer(false);
+      setWantMore(false);
+      setDesiredBuyPrice("");
+      setForSale(false);
+      setAskingPrice("");
+      setLocation("");
     }
   }, [open, initial, defaultCategoryId, categories, parent]);
 
@@ -86,6 +106,11 @@ export function ItemFormModal({
       isPending: isPending || undefined,
       marketplaceUrl: marketplaceUrl.trim() || undefined,
       isContainer: isContainer || undefined,
+      wantMore: wantMore || undefined,
+      desiredBuyPrice: wantMore ? parseAmount(desiredBuyPrice) ?? undefined : undefined,
+      forSale: forSale || undefined,
+      askingPrice: forSale ? parseAmount(askingPrice) ?? undefined : undefined,
+      location: location || undefined,
       // Preserve parentId when editing; set from parent prop when creating a child
       parentId: initial?.parentId ?? parent?.id ?? undefined,
     });
@@ -210,6 +235,21 @@ export function ItemFormModal({
               </div>
             </Field>
 
+            <Field label="Lokation">
+              <select
+                value={location}
+                onChange={(e) => setLocation(e.target.value as ItemLocation | "")}
+                className="input"
+              >
+                <option value="">— Vælg —</option>
+                {itemLocationOrder.map((loc) => (
+                  <option key={loc} value={loc}>
+                    {itemLocationLabels[loc]}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
             <Field label="Noter (valgfrit)">
               <textarea
                 value={notes}
@@ -219,19 +259,81 @@ export function ItemFormModal({
               />
             </Field>
 
-            <label className="flex items-center gap-2 text-sm cursor-pointer pt-1">
-              <input
-                type="checkbox"
-                checked={isPending}
-                onChange={(e) => setIsPending(e.target.checked)}
-              />
-              <span>
-                Ingående lager
-                <span className="text-neutral-500 ml-1">
-                  (potentielt køb / på vej ind)
+            <div className="pt-2 border-t border-neutral-100 space-y-2">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={wantMore}
+                  onChange={(e) => setWantMore(e.target.checked)}
+                />
+                <span>
+                  Vil købe mere
+                  <span className="text-neutral-500 ml-1">
+                    (på ønskelisten)
+                  </span>
                 </span>
-              </span>
-            </label>
+              </label>
+              {wantMore && (
+                <div className="pl-6">
+                  <label className="block">
+                    <div className="text-xs font-medium text-neutral-600 mb-1">
+                      Ønsket købspris (kr.)
+                    </div>
+                    <input
+                      value={desiredBuyPrice}
+                      onChange={(e) => setDesiredBuyPrice(e.target.value)}
+                      className="input tabular-nums"
+                      inputMode="decimal"
+                      placeholder="0"
+                    />
+                  </label>
+                </div>
+              )}
+
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={forSale}
+                  onChange={(e) => setForSale(e.target.checked)}
+                />
+                <span>
+                  Til salg
+                  <span className="text-neutral-500 ml-1">
+                    (lige nu sat til salg)
+                  </span>
+                </span>
+              </label>
+              {forSale && (
+                <div className="pl-6">
+                  <label className="block">
+                    <div className="text-xs font-medium text-neutral-600 mb-1">
+                      Min pris (kr.)
+                    </div>
+                    <input
+                      value={askingPrice}
+                      onChange={(e) => setAskingPrice(e.target.value)}
+                      className="input tabular-nums"
+                      inputMode="decimal"
+                      placeholder="0"
+                    />
+                  </label>
+                </div>
+              )}
+
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isPending}
+                  onChange={(e) => setIsPending(e.target.checked)}
+                />
+                <span>
+                  Ingående lager
+                  <span className="text-neutral-500 ml-1">
+                    (potentielt køb / på vej ind)
+                  </span>
+                </span>
+              </label>
+            </div>
 
             {!isChild && (
               <label className="flex items-center gap-2 text-sm cursor-pointer">

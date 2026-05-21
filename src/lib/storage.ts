@@ -2,7 +2,7 @@ import { supabase } from "./supabase";
 import { seedData } from "./seed";
 import { historicalSnapshots } from "./historicalSeed";
 import { TOTAL_CATEGORY_ID } from "./types";
-import type { AppData, Category, Item, Snapshot } from "./types";
+import type { AppData, Category, Item, ItemLocation, Snapshot } from "./types";
 
 export function makeId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -16,6 +16,7 @@ type CategoryRow = {
   name: string;
   fields: string[];
   order: number;
+  color: string | null;
 };
 
 type ItemRow = {
@@ -33,6 +34,11 @@ type ItemRow = {
   marketplace_url: string | null;
   is_container: boolean;
   parent_id: string | null;
+  want_more: boolean;
+  desired_buy_price: number | null;
+  for_sale: boolean;
+  asking_price: number | null;
+  location: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -43,6 +49,7 @@ function rowToCategory(r: CategoryRow): Category {
     name: r.name,
     fields: (r.fields ?? []) as Category["fields"],
     order: r.order,
+    color: r.color ?? undefined,
   };
 }
 
@@ -61,6 +68,11 @@ function rowToItem(r: ItemRow): Item {
     marketplaceUrl: r.marketplace_url ?? undefined,
     isContainer: r.is_container,
     parentId: r.parent_id ?? undefined,
+    wantMore: r.want_more || undefined,
+    desiredBuyPrice: r.desired_buy_price ?? undefined,
+    forSale: r.for_sale || undefined,
+    askingPrice: r.asking_price ?? undefined,
+    location: (r.location ?? undefined) as ItemLocation | undefined,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -103,6 +115,7 @@ export async function upsertCategory(
     name: cat.name,
     fields: cat.fields,
     order: cat.order,
+    color: cat.color ?? null,
     updated_at: new Date().toISOString(),
   });
   if (error) throw error;
@@ -130,6 +143,11 @@ export async function upsertItem(userId: string, item: Item): Promise<void> {
     marketplace_url: item.marketplaceUrl ?? null,
     is_container: item.isContainer ?? false,
     parent_id: item.parentId ?? null,
+    want_more: item.wantMore ?? false,
+    desired_buy_price: item.desiredBuyPrice ?? null,
+    for_sale: item.forSale ?? false,
+    asking_price: item.askingPrice ?? null,
+    location: item.location ?? null,
     updated_at: item.updatedAt,
   });
   if (error) throw error;
@@ -158,6 +176,11 @@ export async function insertItems(userId: string, items: Item[]): Promise<number
     marketplace_url: item.marketplaceUrl ?? null,
     is_container: item.isContainer ?? false,
     parent_id: item.parentId ?? null,
+    want_more: item.wantMore ?? false,
+    desired_buy_price: item.desiredBuyPrice ?? null,
+    for_sale: item.forSale ?? false,
+    asking_price: item.askingPrice ?? null,
+    location: item.location ?? null,
     updated_at: item.updatedAt,
   }));
   const { error } = await supabase.from("items").insert(rows);

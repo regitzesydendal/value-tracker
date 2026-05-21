@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Category, FieldKey, Item } from "../lib/types";
+import { itemLocationLabels } from "../lib/types";
 import { formatDKK, parseAmount } from "../lib/format";
 
 const fieldLabels: Record<FieldKey, string> = {
@@ -208,6 +209,48 @@ function ItemRow({
                 Ingående
               </span>
             )}
+            {item.wantMore && (
+              <span
+                className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-violet-100 text-violet-800"
+                title={
+                  item.desiredBuyPrice != null
+                    ? `Vil købe mere — ønsker ≤ ${formatDKK(item.desiredBuyPrice)}`
+                    : "Vil købe mere"
+                }
+              >
+                ★ Køb mere
+                {item.desiredBuyPrice != null && (
+                  <span className="ml-1 font-normal opacity-80 tabular-nums">
+                    ≤ {formatDKK(item.desiredBuyPrice)}
+                  </span>
+                )}
+              </span>
+            )}
+            {item.forSale && (
+              <span
+                className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800"
+                title={
+                  item.askingPrice != null
+                    ? `Til salg for ${formatDKK(item.askingPrice)}`
+                    : "Til salg"
+                }
+              >
+                ⊕ Til salg
+                {item.askingPrice != null && (
+                  <span className="ml-1 font-normal opacity-80 tabular-nums">
+                    {formatDKK(item.askingPrice)}
+                  </span>
+                )}
+              </span>
+            )}
+            {item.location && (
+              <span
+                className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-700"
+                title="Lokation"
+              >
+                {itemLocationLabels[item.location]}
+              </span>
+            )}
             {item.marketplaceUrl && (
               <a
                 href={item.marketplaceUrl}
@@ -224,7 +267,17 @@ function ItemRow({
         </td>
         {showCategory && (
           <td className="px-4 py-2.5 text-neutral-500">
-            {categoriesById.get(item.categoryId)?.name ?? "—"}
+            <span className="inline-flex items-center gap-1.5">
+              {categoriesById.get(item.categoryId)?.color && (
+                <span
+                  className="inline-block w-2 h-2 rounded-full shrink-0"
+                  style={{
+                    backgroundColor: categoriesById.get(item.categoryId)!.color,
+                  }}
+                />
+              )}
+              {categoriesById.get(item.categoryId)?.name ?? "—"}
+            </span>
           </td>
         )}
         {visibleFields.includes("serial") && (

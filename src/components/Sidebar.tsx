@@ -74,7 +74,15 @@ export function Sidebar({
               }`}
             >
               <div className="flex justify-between items-center">
-                <span className="truncate">{cat.name}</span>
+                <span className="flex items-center gap-2 min-w-0">
+                  {cat.color && (
+                    <span
+                      className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: cat.color }}
+                    />
+                  )}
+                  <span className="truncate">{cat.name}</span>
+                </span>
                 <span className="tabular-nums text-xs opacity-80 ml-2 shrink-0">
                   {count}
                 </span>

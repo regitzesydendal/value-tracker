@@ -5,7 +5,33 @@ export type Category = {
   name: string;
   fields: FieldKey[];
   order: number;
+  color?: string; // hex string, e.g. "#f59e0b" — used for sidebar dot + row accent
 };
+
+// Where the physical item lives. Stored as a string in the DB, but the UI
+// restricts new entries to this fixed list.
+export type ItemLocation =
+  | "home"
+  | "parents"
+  | "digital"
+  | "incoming"
+  | "other";
+
+export const itemLocationLabels: Record<ItemLocation, string> = {
+  home: "Hjemme",
+  parents: "Hos forældre",
+  digital: "Digital",
+  incoming: "På vej",
+  other: "Andet",
+};
+
+export const itemLocationOrder: ItemLocation[] = [
+  "home",
+  "parents",
+  "digital",
+  "incoming",
+  "other",
+];
 
 export type Item = {
   id: string;
@@ -21,6 +47,11 @@ export type Item = {
   marketplaceUrl?: string; // e.g. Cardmarket / TCGPlayer / eBay listing URL
   isContainer?: boolean; // true = can have child items (e.g. "Collectr" holding many cards)
   parentId?: string;     // points to another item.id if this is a child
+  wantMore?: boolean;          // "I want to buy more of this"
+  desiredBuyPrice?: number;    // the price I'd be willing to pay (kr.)
+  forSale?: boolean;           // "currently listed for sale"
+  askingPrice?: number;        // the price I'm asking for (kr.)
+  location?: ItemLocation;     // where the item physically lives
   createdAt: string;
   updatedAt: string;
 };

@@ -213,6 +213,7 @@ function TrackerApp({ session }: { session: Session }) {
     id?: string;
     name: string;
     fields: FieldKey[];
+    color?: string;
   }) {
     const isUpdate = !!payload.id;
     const cat: Category = isUpdate
@@ -220,11 +221,13 @@ function TrackerApp({ session }: { session: Session }) {
           ...(data.categories.find((c) => c.id === payload.id) as Category),
           name: payload.name,
           fields: payload.fields,
+          color: payload.color,
         }
       : {
           id: makeId(),
           name: payload.name,
           fields: payload.fields,
+          color: payload.color,
           order: Math.max(0, ...data.categories.map((c) => c.order)) + 1,
         };
 
