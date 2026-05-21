@@ -5,8 +5,11 @@ import { ItemTable } from "./components/ItemTable";
 import { ItemFormModal } from "./components/ItemFormModal";
 import { CategoryFormModal } from "./components/CategoryFormModal";
 import { AuthGate } from "./components/AuthGate";
+import { SnapshotButton } from "./components/SnapshotButton";
+import { HistoryView } from "./components/HistoryView";
 import {
   loadData,
+  loadSnapshots,
   upsertCategory,
   deleteCategory as dbDeleteCategory,
   upsertItem,
@@ -14,7 +17,7 @@ import {
   makeId,
 } from "./lib/storage";
 import { supabase } from "./lib/supabase";
-import type { AppData, Category, FieldKey, Item } from "./lib/types";
+import type { AppData, Category, FieldKey, Item, Snapshot } from "./lib/types";
 
 export default function App() {
   return <AuthGate>{(session) => <TrackerApp session={session} />}</AuthGate>;
@@ -23,6 +26,8 @@ export default function App() {
 function TrackerApp({ session }: { session: Session }) {
   const userId = session.user.id;
   const [data, setData] = useState<AppData>({ categories: [], items: [] });
+  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
+  const [view, setView] = useState<"list" | "history">("list");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -35,13 +40,30 @@ function TrackerApp({ session }: { session: Session }) {
   const [catModalOpen, setCatModalOpen] = useState(false);
   const [editingCat, setEditingCat] = useState<Category | null>(null);
 
-  // Initial load: fetch everything for this user.
+  async function refreshSnapshots() {
+    try {
+      const fresh = await loadSnapshots(userId);
+      setSnapshots(fresh);
+    } catch (e) {
+      // Snapshot loading is non-fatal; the history view will show 0 entries.
+      // The most common cause is the migration not having been run yet.
+      console.warn("loadSnapshots failed:", e);
+    }
+  }
+
+  // Initial load: fetch items + categories + snapshots for this user.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const fresh = await loadData(userId);
-        if (!cancelled) setData(fresh);
+        const [fresh, snaps] = await Promise.all([
+          loadData(userId),
+          loadSnapshots(userId).catch(() => [] as Snapshot[]),
+        ]);
+        if (!cancelled) {
+          setData(fresh);
+          setSnapshots(snaps);
+        }
       } catch (e) {
         if (!cancelled) setLoadError(e instanceof Error ? e.message : String(e));
       } finally {
@@ -245,39 +267,75 @@ function TrackerApp({ session }: { session: Session }) {
         <header className="border-b border-neutral-200 bg-white px-8 py-4 flex items-center gap-4">
           <div className="flex-1 min-w-0">
             <h1 className="text-xl font-semibold tracking-tight">
-              {currentCategory ? currentCategory.name : "Alle elementer"}
+              {view === "history"
+                ? "Historik"
+                : currentCategory
+                  ? currentCategory.name
+                  : "Alle elementer"}
             </h1>
             <div className="text-xs text-neutral-500 mt-0.5">
-              {filteredItems.length} element
-              {filteredItems.length === 1 ? "" : "er"}
+              {view === "history"
+                ? `${snapshots.length > 0 ? new Set(snapshots.map((s) => s.date)).size : 0} snapshot${
+                    new Set(snapshots.map((s) => s.date)).size === 1 ? "" : "s"
+                  }`
+                : `${filteredItems.length} element${filteredItems.length === 1 ? "" : "er"}`}
             </div>
           </div>
 
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Søg…"
-            className="input max-w-xs"
-          />
-
-          {currentCategory && (
+          <div className="flex rounded border border-neutral-200 overflow-hidden text-sm">
             <button
-              onClick={() => {
-                setEditingCat(currentCategory);
-                setCatModalOpen(true);
-              }}
-              className="text-sm px-3 py-1.5 rounded hover:bg-neutral-100 text-neutral-600"
+              onClick={() => setView("list")}
+              className={`px-3 py-1.5 ${
+                view === "list"
+                  ? "bg-neutral-900 text-white"
+                  : "bg-white text-neutral-600 hover:bg-neutral-100"
+              }`}
             >
-              Rediger kategori
+              Liste
             </button>
+            <button
+              onClick={() => setView("history")}
+              className={`px-3 py-1.5 ${
+                view === "history"
+                  ? "bg-neutral-900 text-white"
+                  : "bg-white text-neutral-600 hover:bg-neutral-100"
+              }`}
+            >
+              Historik
+            </button>
+          </div>
+
+          {view === "list" && (
+            <>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Søg…"
+                className="input max-w-xs"
+              />
+
+              {currentCategory && (
+                <button
+                  onClick={() => {
+                    setEditingCat(currentCategory);
+                    setCatModalOpen(true);
+                  }}
+                  className="text-sm px-3 py-1.5 rounded hover:bg-neutral-100 text-neutral-600"
+                >
+                  Rediger kategori
+                </button>
+              )}
+
+              <button
+                onClick={handleAddItem}
+                className="text-sm px-3 py-1.5 rounded bg-neutral-900 text-white hover:bg-neutral-800"
+              >
+                + Tilføj
+              </button>
+            </>
           )}
 
-          <button
-            onClick={handleAddItem}
-            className="text-sm px-3 py-1.5 rounded bg-neutral-900 text-white hover:bg-neutral-800"
-          >
-            + Tilføj
-          </button>
+          <SnapshotButton userId={userId} data={data} onDone={refreshSnapshots} />
 
           <div className="border-l border-neutral-200 pl-4 flex items-center gap-2">
             <span className="text-xs text-neutral-500" title={session.user.email ?? ""}>
@@ -293,13 +351,22 @@ function TrackerApp({ session }: { session: Session }) {
         </header>
 
         <div className="p-8">
-          <ItemTable
-            items={filteredItems}
-            category={currentCategory}
-            categoriesById={categoriesById}
-            onEdit={handleEditItem}
-            onDelete={handleDeleteItem}
-          />
+          {view === "list" ? (
+            <ItemTable
+              items={filteredItems}
+              category={currentCategory}
+              categoriesById={categoriesById}
+              onEdit={handleEditItem}
+              onDelete={handleDeleteItem}
+            />
+          ) : (
+            <HistoryView
+              userId={userId}
+              data={data}
+              snapshots={snapshots}
+              onSnapshotsChanged={refreshSnapshots}
+            />
+          )}
         </div>
       </main>
 

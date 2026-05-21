@@ -26,3 +26,13 @@ export type AppData = {
   categories: Category[];
   items: Item[];
 };
+
+export type Snapshot = {
+  id: string;
+  date: string;          // ISO date (YYYY-MM-DD)
+  categoryId: string;    // '__total__' for grand-total rows
+  value: number;
+  notes?: string;
+};
+
+export const TOTAL_CATEGORY_ID = "__total__";

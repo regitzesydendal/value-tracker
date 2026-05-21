@@ -1,6 +1,8 @@
 import { supabase } from "./supabase";
 import { seedData } from "./seed";
-import type { AppData, Category, Item } from "./types";
+import { historicalSnapshots } from "./historicalSeed";
+import { TOTAL_CATEGORY_ID } from "./types";
+import type { AppData, Category, Item, Snapshot } from "./types";
 
 export function makeId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -127,6 +129,112 @@ export async function upsertItem(userId: string, item: Item): Promise<void> {
 export async function deleteItem(id: string): Promise<void> {
   const { error } = await supabase.from("items").delete().eq("id", id);
   if (error) throw error;
+}
+
+// ---------- Snapshots ----------
+
+type SnapshotRow = {
+  id: string;
+  user_id: string;
+  date: string;
+  category_id: string;
+  value: number;
+  notes: string | null;
+  created_at: string;
+};
+
+function rowToSnapshot(r: SnapshotRow): Snapshot {
+  return {
+    id: r.id,
+    date: r.date,
+    categoryId: r.category_id,
+    value: Number(r.value),
+    notes: r.notes ?? undefined,
+  };
+}
+
+export async function loadSnapshots(userId: string): Promise<Snapshot[]> {
+  const { data, error } = await supabase
+    .from("snapshots")
+    .select("*")
+    .eq("user_id", userId)
+    .order("date", { ascending: true });
+  if (error) throw error;
+  return (data as SnapshotRow[]).map(rowToSnapshot);
+}
+
+// Take a full snapshot for a given date: one row per category + grand total.
+// Replaces any existing rows for the same date (idempotent by (user_id, date, category_id)).
+export async function takeSnapshot(
+  userId: string,
+  date: string,
+  data: AppData,
+  notes?: string,
+): Promise<void> {
+  const totalsByCategory = new Map<string, number>();
+  let grandTotal = 0;
+  for (const item of data.items) {
+    totalsByCategory.set(
+      item.categoryId,
+      (totalsByCategory.get(item.categoryId) ?? 0) + (item.currentValue || 0),
+    );
+    grandTotal += item.currentValue || 0;
+  }
+
+  const rows: Omit<SnapshotRow, "created_at">[] = [];
+  for (const cat of data.categories) {
+    rows.push({
+      id: `${userId}:${date}:${cat.id}`,
+      user_id: userId,
+      date,
+      category_id: cat.id,
+      value: totalsByCategory.get(cat.id) ?? 0,
+      notes: notes ?? null,
+    });
+  }
+  rows.push({
+    id: `${userId}:${date}:${TOTAL_CATEGORY_ID}`,
+    user_id: userId,
+    date,
+    category_id: TOTAL_CATEGORY_ID,
+    value: grandTotal,
+    notes: notes ?? null,
+  });
+
+  const { error } = await supabase
+    .from("snapshots")
+    .upsert(rows, { onConflict: "user_id,date,category_id" });
+  if (error) throw error;
+}
+
+export async function deleteSnapshotsForDate(
+  userId: string,
+  date: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("snapshots")
+    .delete()
+    .eq("user_id", userId)
+    .eq("date", date);
+  if (error) throw error;
+}
+
+// One-time backfill of March + April 2026 historical data from the spreadsheet.
+// Uses upsert so re-clicking the button is harmless.
+export async function backfillHistoricalSnapshots(userId: string): Promise<number> {
+  const rows = historicalSnapshots.map((s) => ({
+    id: `${userId}:${s.date}:${s.categoryId}`,
+    user_id: userId,
+    date: s.date,
+    category_id: s.categoryId,
+    value: s.value,
+    notes: "Historisk backfill",
+  }));
+  const { error } = await supabase
+    .from("snapshots")
+    .upsert(rows, { onConflict: "user_id,date,category_id" });
+  if (error) throw error;
+  return rows.length;
 }
 
 // ---------- First-time setup ----------
