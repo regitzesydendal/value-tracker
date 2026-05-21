@@ -309,9 +309,9 @@ function TrackerApp({ session }: { session: Session }) {
       />
 
       <main className="flex-1 min-w-0">
-        <header className="border-b border-neutral-200 bg-white px-8 py-4 flex items-center gap-4">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-semibold tracking-tight">
+        <header className="border-b border-neutral-200 bg-white px-8 py-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <div className="min-w-0">
+            <h1 className="text-xl font-semibold tracking-tight whitespace-nowrap">
               {view === "history"
                 ? "Historik"
                 : currentCategory
@@ -327,90 +327,95 @@ function TrackerApp({ session }: { session: Session }) {
             </div>
           </div>
 
-          <div className="flex rounded border border-neutral-200 overflow-hidden text-sm">
-            <button
-              onClick={() => setView("list")}
-              className={`px-3 py-1.5 ${
-                view === "list"
-                  ? "bg-neutral-900 text-white"
-                  : "bg-white text-neutral-600 hover:bg-neutral-100"
-              }`}
-            >
-              Liste
-            </button>
-            <button
-              onClick={() => setView("history")}
-              className={`px-3 py-1.5 ${
-                view === "history"
-                  ? "bg-neutral-900 text-white"
-                  : "bg-white text-neutral-600 hover:bg-neutral-100"
-              }`}
-            >
-              Historik
-            </button>
-          </div>
-
-          {view === "list" && (
-            <>
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Søg…"
-                className="input max-w-xs"
-              />
-
-              {currentCategory && (
-                <button
-                  onClick={() => {
-                    setEditingCat(currentCategory);
-                    setCatModalOpen(true);
-                  }}
-                  className="text-sm px-3 py-1.5 rounded hover:bg-neutral-100 text-neutral-600"
-                >
-                  Rediger kategori
-                </button>
-              )}
-
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <div className="flex rounded border border-neutral-200 overflow-hidden text-sm">
               <button
-                onClick={() => setEditMode((v) => !v)}
-                className={`text-sm px-3 py-1.5 rounded ${
-                  editMode
-                    ? "bg-amber-500 text-white hover:bg-amber-600"
-                    : "border border-neutral-200 hover:bg-neutral-100 text-neutral-700"
+                onClick={() => setView("list")}
+                className={`px-3 py-1.5 whitespace-nowrap ${
+                  view === "list"
+                    ? "bg-neutral-900 text-white"
+                    : "bg-white text-neutral-600 hover:bg-neutral-100"
                 }`}
-                title="Hurtig redigér: klik direkte på en pris for at opdatere"
               >
-                {editMode ? "✓ Færdig" : "✏️ Hurtig redigér"}
+                Liste
               </button>
-
               <button
-                onClick={() => setCsvOpen(true)}
-                className="text-sm px-3 py-1.5 rounded border border-neutral-200 hover:bg-neutral-100 text-neutral-700"
+                onClick={() => setView("history")}
+                className={`px-3 py-1.5 whitespace-nowrap ${
+                  view === "history"
+                    ? "bg-neutral-900 text-white"
+                    : "bg-white text-neutral-600 hover:bg-neutral-100"
+                }`}
               >
-                ⇪ Importér
+                Historik
               </button>
+            </div>
 
+            {view === "list" && (
+              <>
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Søg…"
+                  className="input max-w-[180px]"
+                />
+
+                {currentCategory && (
+                  <button
+                    onClick={() => {
+                      setEditingCat(currentCategory);
+                      setCatModalOpen(true);
+                    }}
+                    className="text-sm px-3 py-1.5 rounded hover:bg-neutral-100 text-neutral-600 whitespace-nowrap"
+                  >
+                    Rediger kategori
+                  </button>
+                )}
+
+                <button
+                  onClick={() => setEditMode((v) => !v)}
+                  className={`text-sm px-3 py-1.5 rounded whitespace-nowrap ${
+                    editMode
+                      ? "bg-amber-500 text-white hover:bg-amber-600"
+                      : "border border-neutral-200 hover:bg-neutral-100 text-neutral-700"
+                  }`}
+                  title="Hurtig redigér: klik direkte på en pris for at opdatere"
+                >
+                  {editMode ? "✓ Færdig" : "✏️ Redigér"}
+                </button>
+
+                <button
+                  onClick={() => setCsvOpen(true)}
+                  className="text-sm px-3 py-1.5 rounded border border-neutral-200 hover:bg-neutral-100 text-neutral-700 whitespace-nowrap"
+                >
+                  ⇪ Importér
+                </button>
+
+                <button
+                  onClick={handleAddItem}
+                  className="text-sm px-3 py-1.5 rounded bg-neutral-900 text-white hover:bg-neutral-800 whitespace-nowrap"
+                >
+                  + Tilføj
+                </button>
+              </>
+            )}
+
+            <SnapshotButton userId={userId} data={data} onDone={refreshSnapshots} />
+
+            <div className="border-l border-neutral-200 pl-3 flex items-center gap-2">
+              <span
+                className="text-xs text-neutral-500 max-w-[140px] truncate"
+                title={session.user.email ?? ""}
+              >
+                {session.user.email}
+              </span>
               <button
-                onClick={handleAddItem}
-                className="text-sm px-3 py-1.5 rounded bg-neutral-900 text-white hover:bg-neutral-800"
+                onClick={handleSignOut}
+                className="text-xs text-neutral-500 underline hover:text-neutral-900 whitespace-nowrap"
               >
-                + Tilføj
+                Log ud
               </button>
-            </>
-          )}
-
-          <SnapshotButton userId={userId} data={data} onDone={refreshSnapshots} />
-
-          <div className="border-l border-neutral-200 pl-4 flex items-center gap-2">
-            <span className="text-xs text-neutral-500" title={session.user.email ?? ""}>
-              {session.user.email}
-            </span>
-            <button
-              onClick={handleSignOut}
-              className="text-xs text-neutral-500 underline hover:text-neutral-900"
-            >
-              Log ud
-            </button>
+            </div>
           </div>
         </header>
 
