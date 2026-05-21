@@ -176,7 +176,7 @@ export function HistoryView({
                 width={50}
               />
               <Tooltip
-                formatter={(value: number) => formatDKK(value)}
+                formatter={(value) => formatDKK(Number(value))}
                 contentStyle={{
                   fontSize: 12,
                   borderRadius: 6,
