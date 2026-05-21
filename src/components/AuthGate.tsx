@@ -19,12 +19,13 @@ export function AuthGate({ children }: Props) {
       setLoading(false);
       return;
     }
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
+    // onAuthStateChange fires "INITIAL_SESSION" once the client has settled
+    // — including parsing the #access_token hash from a magic-link callback.
+    // Waiting for it (instead of resolving getSession() eagerly) avoids the
+    // brief flash of the login screen on page load when a session exists.
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
+      setLoading(false);
     });
     return () => sub.subscription.unsubscribe();
   }, []);
