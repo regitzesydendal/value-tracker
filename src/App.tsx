@@ -11,7 +11,6 @@ import {
   deleteCategory as dbDeleteCategory,
   upsertItem,
   deleteItem as dbDeleteItem,
-  seedIfEmpty,
   makeId,
 } from "./lib/storage";
 import { supabase } from "./lib/supabase";
@@ -36,12 +35,11 @@ function TrackerApp({ session }: { session: Session }) {
   const [catModalOpen, setCatModalOpen] = useState(false);
   const [editingCat, setEditingCat] = useState<Category | null>(null);
 
-  // Initial load: seed defaults on first login, then fetch everything.
+  // Initial load: fetch everything for this user.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        await seedIfEmpty(userId);
         const fresh = await loadData(userId);
         if (!cancelled) setData(fresh);
       } catch (e) {
