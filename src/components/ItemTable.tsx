@@ -1,14 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Category, FieldKey, Item } from "../lib/types";
+import type { Category, Item } from "../lib/types";
 import { itemLocationLabels } from "../lib/types";
 import { formatDKK, parseAmount } from "../lib/format";
-
-const fieldLabels: Record<FieldKey, string> = {
-  serial: "N.",
-  version: "Version",
-  set: "Sæt",
-  boughtFor: "Købt for",
-};
 
 type Props = {
   items: Item[];          // filtered top-level items to display
@@ -34,9 +27,6 @@ export function ItemTable({
   onAddChild,
 }: Props) {
   const showCategory = category === null;
-  const visibleFields: FieldKey[] = category
-    ? category.fields
-    : (["serial", "version", "set", "boughtFor"] as FieldKey[]);
 
   const childrenByParent = useMemo(() => {
     const m = new Map<string, Item[]>();
@@ -51,11 +41,6 @@ export function ItemTable({
   }, [allItems]);
 
   const total = items.reduce((s, i) => s + (i.currentValue || 0), 0);
-  const colSpan =
-    1 + // name
-    (showCategory ? 1 : 0) +
-    visibleFields.length +
-    1; // current value
 
   if (items.length === 0) {
     return (
@@ -66,83 +51,39 @@ export function ItemTable({
   }
 
   return (
-    <div className="border border-neutral-200 rounded overflow-hidden bg-white">
-      <table className="w-full text-sm">
-        <thead className="bg-neutral-50 text-neutral-500 text-xs uppercase tracking-wider">
-          <tr>
-            <th className="text-left font-medium px-4 py-2.5">Navn</th>
-            {showCategory && (
-              <th className="text-left font-medium px-4 py-2.5">Kategori</th>
-            )}
-            {visibleFields.includes("serial") && (
-              <th className="text-left font-medium px-4 py-2.5">
-                {fieldLabels.serial}
-              </th>
-            )}
-            {visibleFields.includes("version") && (
-              <th className="text-left font-medium px-4 py-2.5">
-                {fieldLabels.version}
-              </th>
-            )}
-            {visibleFields.includes("set") && (
-              <th className="text-left font-medium px-4 py-2.5">
-                {fieldLabels.set}
-              </th>
-            )}
-            {visibleFields.includes("boughtFor") && (
-              <th className="text-right font-medium px-4 py-2.5">
-                {fieldLabels.boughtFor}
-              </th>
-            )}
-            <th className="text-right font-medium px-4 py-2.5">
-              Nuværende værdi
-            </th>
-            <th className="w-28"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item) => (
-            <ItemRow
-              key={item.id}
-              item={item}
-              depth={0}
-              childrenByParent={childrenByParent}
-              showCategory={showCategory}
-              visibleFields={visibleFields}
-              categoriesById={categoriesById}
-              editMode={editMode}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onUpdateValue={onUpdateValue}
-              onAddChild={onAddChild}
-            />
-          ))}
-        </tbody>
-        <tfoot className="bg-neutral-50 border-t border-neutral-200">
-          <tr>
-            <td
-              className="px-4 py-2.5 text-xs uppercase tracking-wider text-neutral-500"
-              colSpan={colSpan - 1}
-            >
-              I alt
-            </td>
-            <td className="px-4 py-2.5 text-right font-semibold tabular-nums">
-              {formatDKK(total)}
-            </td>
-            <td></td>
-          </tr>
-        </tfoot>
-      </table>
+    <div className="space-y-2">
+      {items.map((item) => (
+        <ItemCard
+          key={item.id}
+          item={item}
+          depth={0}
+          childrenByParent={childrenByParent}
+          showCategory={showCategory}
+          categoriesById={categoriesById}
+          editMode={editMode}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onUpdateValue={onUpdateValue}
+          onAddChild={onAddChild}
+        />
+      ))}
+      <div className="flex justify-between items-center px-4 py-3 mt-2 border-t border-neutral-200 bg-neutral-50 rounded">
+        <span className="text-xs uppercase tracking-wider text-neutral-500">
+          I alt
+        </span>
+        <span className="font-semibold tabular-nums text-base">
+          {formatDKK(total)}
+        </span>
+      </div>
     </div>
   );
 }
 
-type RowProps = {
+type CardProps = {
   item: Item;
   depth: number;
   childrenByParent: Map<string, Item[]>;
   showCategory: boolean;
-  visibleFields: FieldKey[];
   categoriesById: Map<string, Category>;
   editMode: boolean;
   onEdit: (item: Item) => void;
@@ -151,217 +92,246 @@ type RowProps = {
   onAddChild: (parent: Item) => void;
 };
 
-function ItemRow({
+function ItemCard({
   item,
   depth,
   childrenByParent,
   showCategory,
-  visibleFields,
   categoriesById,
   editMode,
   onEdit,
   onDelete,
   onUpdateValue,
   onAddChild,
-}: RowProps) {
+}: CardProps) {
   const [expanded, setExpanded] = useState(false);
   const kids = childrenByParent.get(item.id) ?? [];
   const hasKids = kids.length > 0;
   const isContainer = !!item.isContainer;
   const childrenSum = kids.reduce((s, k) => s + (k.currentValue || 0), 0);
 
+  const cat = categoriesById.get(item.categoryId);
+  const visibleFields = cat?.fields ?? [];
+  const accentColor = cat?.color ?? "#e5e7eb"; // neutral-200 fallback
+
+  // Secondary meta line — only show fields configured for this category that
+  // actually have a value, joined with middle dots.
+  const metaParts: string[] = [];
+  if (visibleFields.includes("set") && item.set) metaParts.push(item.set);
+  if (visibleFields.includes("version") && item.version) metaParts.push(item.version);
+  if (visibleFields.includes("serial") && item.serial) {
+    metaParts.push(item.serial);
+  }
+
+  const showBoughtFor =
+    visibleFields.includes("boughtFor") && item.boughtFor != null;
+
   return (
     <>
-      <tr
-        className={`border-t border-neutral-100 hover:bg-neutral-50 group ${
-          depth > 0 ? "bg-neutral-50/40" : ""
-        }`}
+      <div
+        className="group"
+        style={{ marginLeft: depth * 24 }}
       >
-        <td
-          className="px-4 py-2.5 font-medium text-neutral-900"
-          style={{ paddingLeft: 16 + depth * 24 }}
+        <div
+          className={`flex items-stretch overflow-hidden rounded border border-neutral-200 bg-white hover:border-neutral-300 transition-colors ${
+            depth > 0 ? "bg-neutral-50/40" : ""
+          }`}
         >
-          <span className="inline-flex items-center gap-2">
-            {isContainer && (
-              <button
-                onClick={() => setExpanded((v) => !v)}
-                className="text-neutral-400 hover:text-neutral-700 text-xs w-4"
-                title={expanded ? "Skjul kort" : "Vis kort"}
-              >
-                {expanded ? "▼" : "▶"}
-              </button>
-            )}
-            {!isContainer && depth === 0 && <span className="w-4" />}
-            {item.name}
-            {isContainer && (
-              <span
-                className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800"
-                title={hasKids ? `${kids.length} kort indeni` : "Container — kan rumme kort"}
-              >
-                {hasKids ? `${kids.length} kort` : "container"}
-              </span>
-            )}
-            {item.isPending && (
-              <span
-                className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800"
-                title="Ingående lager — potentielt køb"
-              >
-                Ingående
-              </span>
-            )}
-            {item.wantMore && (
-              <span
-                className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-violet-100 text-violet-800"
-                title={
-                  item.desiredBuyPrice != null
-                    ? `Vil købe mere — ønsker ≤ ${formatDKK(item.desiredBuyPrice)}`
-                    : "Vil købe mere"
-                }
-              >
-                ★ Køb mere
-                {item.desiredBuyPrice != null && (
-                  <span className="ml-1 font-normal opacity-80 tabular-nums">
-                    ≤ {formatDKK(item.desiredBuyPrice)}
-                  </span>
-                )}
-              </span>
-            )}
-            {item.forSale && (
-              <span
-                className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800"
-                title={
-                  item.askingPrice != null
-                    ? `Til salg for ${formatDKK(item.askingPrice)}`
-                    : "Til salg"
-                }
-              >
-                ⊕ Til salg
-                {item.askingPrice != null && (
-                  <span className="ml-1 font-normal opacity-80 tabular-nums">
-                    {formatDKK(item.askingPrice)}
-                  </span>
-                )}
-              </span>
-            )}
-            {item.location && (
-              <span
-                className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-700"
-                title="Lokation"
-              >
-                {itemLocationLabels[item.location]}
-              </span>
-            )}
-            {item.marketplaceUrl && (
-              <a
-                href={item.marketplaceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="text-neutral-400 hover:text-blue-600 text-xs"
-                title="Åbn link til pris-side"
-              >
-                ↗
-              </a>
-            )}
-          </span>
-        </td>
-        {showCategory && (
-          <td className="px-4 py-2.5 text-neutral-500">
-            <span className="inline-flex items-center gap-1.5">
-              {categoriesById.get(item.categoryId)?.color && (
-                <span
-                  className="inline-block w-2 h-2 rounded-full shrink-0"
-                  style={{
-                    backgroundColor: categoriesById.get(item.categoryId)!.color,
-                  }}
-                />
-              )}
-              {categoriesById.get(item.categoryId)?.name ?? "—"}
-            </span>
-          </td>
-        )}
-        {visibleFields.includes("serial") && (
-          <td className="px-4 py-2.5 text-neutral-600 tabular-nums">
-            {item.serial || "—"}
-          </td>
-        )}
-        {visibleFields.includes("version") && (
-          <td className="px-4 py-2.5 text-neutral-600">
-            {item.version || "—"}
-          </td>
-        )}
-        {visibleFields.includes("set") && (
-          <td className="px-4 py-2.5 text-neutral-600">{item.set || "—"}</td>
-        )}
-        {visibleFields.includes("boughtFor") && (
-          <td className="px-4 py-2.5 text-right text-neutral-600 tabular-nums">
-            {item.boughtFor != null ? formatDKK(item.boughtFor) : "—"}
-          </td>
-        )}
-        <td className="px-4 py-2.5 text-right font-medium text-neutral-900 tabular-nums">
-          {editMode ? (
-            <InlineValueInput
-              initial={item.currentValue}
-              onCommit={(v) => onUpdateValue(item, v)}
-            />
-          ) : (
-            <>
-              {formatDKK(item.currentValue)}
-              {isContainer && hasKids && (
-                <div
-                  className="text-[10px] text-neutral-400 tabular-nums"
-                  title="Sum af kort indeni"
-                >
-                  Σ {formatDKK(childrenSum)}
-                </div>
-              )}
-            </>
-          )}
-        </td>
-        <td className="px-2 py-2.5 text-right">
+          {/* Category accent bar */}
           <div
-            className={`flex gap-1 justify-end transition-opacity ${
-              editMode ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-            }`}
-          >
-            {isContainer && (
-              <button
-                onClick={() => {
-                  onAddChild(item);
-                  setExpanded(true);
-                }}
-                className="text-xs px-2 py-1 rounded hover:bg-neutral-200 text-neutral-600"
-                title="Tilføj kort herunder"
+            className="w-1.5 shrink-0"
+            style={{ backgroundColor: accentColor }}
+            aria-hidden
+          />
+
+          <div className="flex-1 min-w-0 px-4 py-3">
+            <div className="flex items-start gap-3">
+              {/* Expand chevron for containers */}
+              {isContainer && (
+                <button
+                  onClick={() => setExpanded((v) => !v)}
+                  className="text-neutral-400 hover:text-neutral-700 text-xs w-4 mt-1 shrink-0"
+                  title={expanded ? "Skjul kort" : "Vis kort"}
+                >
+                  {expanded ? "▼" : "▶"}
+                </button>
+              )}
+
+              {/* Main content */}
+              <div className="flex-1 min-w-0">
+                {/* Top row: name + badges */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-medium text-neutral-900 text-[15px]">
+                    {item.name}
+                  </span>
+                  {isContainer && (
+                    <Badge
+                      tone="blue"
+                      title={
+                        hasKids
+                          ? `${kids.length} kort indeni`
+                          : "Container — kan rumme kort"
+                      }
+                    >
+                      {hasKids ? `${kids.length} kort` : "container"}
+                    </Badge>
+                  )}
+                  {item.isPending && (
+                    <Badge tone="amber" title="Ingående lager — potentielt køb">
+                      Ingående
+                    </Badge>
+                  )}
+                  {item.wantMore && (
+                    <Badge
+                      tone="violet"
+                      title={
+                        item.desiredBuyPrice != null
+                          ? `Vil købe mere — ønsker ≤ ${formatDKK(item.desiredBuyPrice)}`
+                          : "Vil købe mere"
+                      }
+                    >
+                      ★ Køb mere
+                      {item.desiredBuyPrice != null && (
+                        <span className="ml-1 font-normal opacity-80 tabular-nums">
+                          ≤ {formatDKK(item.desiredBuyPrice)}
+                        </span>
+                      )}
+                    </Badge>
+                  )}
+                  {item.forSale && (
+                    <Badge
+                      tone="emerald"
+                      title={
+                        item.askingPrice != null
+                          ? `Til salg for ${formatDKK(item.askingPrice)}`
+                          : "Til salg"
+                      }
+                    >
+                      ⊕ Til salg
+                      {item.askingPrice != null && (
+                        <span className="ml-1 font-normal opacity-80 tabular-nums">
+                          {formatDKK(item.askingPrice)}
+                        </span>
+                      )}
+                    </Badge>
+                  )}
+                  {item.location && (
+                    <Badge tone="neutral" title="Lokation">
+                      {itemLocationLabels[item.location]}
+                    </Badge>
+                  )}
+                  {item.marketplaceUrl && (
+                    <a
+                      href={item.marketplaceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-neutral-400 hover:text-blue-600 text-xs"
+                      title="Åbn link til pris-side"
+                    >
+                      ↗
+                    </a>
+                  )}
+                </div>
+
+                {/* Meta row: category + set/version/serial + købt for */}
+                {(showCategory || metaParts.length > 0 || showBoughtFor) && (
+                  <div className="mt-1 text-xs text-neutral-500 flex items-center gap-x-3 gap-y-1 flex-wrap">
+                    {showCategory && cat && (
+                      <span className="inline-flex items-center gap-1.5">
+                        {cat.color && (
+                          <span
+                            className="inline-block w-1.5 h-1.5 rounded-full"
+                            style={{ backgroundColor: cat.color }}
+                          />
+                        )}
+                        {cat.name}
+                      </span>
+                    )}
+                    {metaParts.length > 0 && (
+                      <span>{metaParts.join(" · ")}</span>
+                    )}
+                    {showBoughtFor && (
+                      <span>
+                        Købt:{" "}
+                        <span className="tabular-nums text-neutral-700">
+                          {formatDKK(item.boughtFor!)}
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Value column */}
+              <div className="text-right shrink-0">
+                {editMode ? (
+                  <InlineValueInput
+                    initial={item.currentValue}
+                    onCommit={(v) => onUpdateValue(item, v)}
+                  />
+                ) : (
+                  <>
+                    <div className="text-lg font-semibold tabular-nums text-neutral-900">
+                      {formatDKK(item.currentValue)}
+                    </div>
+                    {isContainer && hasKids && (
+                      <div
+                        className="text-[10px] text-neutral-400 tabular-nums"
+                        title="Sum af kort indeni"
+                      >
+                        Σ {formatDKK(childrenSum)}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div
+                className={`flex gap-1 items-start shrink-0 transition-opacity ${
+                  editMode ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                }`}
               >
-                +
-              </button>
-            )}
-            <button
-              onClick={() => onEdit(item)}
-              className="text-xs px-2 py-1 rounded hover:bg-neutral-200 text-neutral-600"
-              title="Rediger"
-            >
-              ✎
-            </button>
-            <button
-              onClick={() => onDelete(item.id)}
-              className="text-xs px-2 py-1 rounded hover:bg-red-100 hover:text-red-700 text-neutral-600"
-              title={hasKids ? "Slet (sletter også kort indeni)" : "Slet"}
-            >
-              ✕
-            </button>
+                {isContainer && (
+                  <button
+                    onClick={() => {
+                      onAddChild(item);
+                      setExpanded(true);
+                    }}
+                    className="text-xs px-2 py-1 rounded hover:bg-neutral-200 text-neutral-600"
+                    title="Tilføj kort herunder"
+                  >
+                    +
+                  </button>
+                )}
+                <button
+                  onClick={() => onEdit(item)}
+                  className="text-xs px-2 py-1 rounded hover:bg-neutral-200 text-neutral-600"
+                  title="Rediger"
+                >
+                  ✎
+                </button>
+                <button
+                  onClick={() => onDelete(item.id)}
+                  className="text-xs px-2 py-1 rounded hover:bg-red-100 hover:text-red-700 text-neutral-600"
+                  title={hasKids ? "Slet (sletter også kort indeni)" : "Slet"}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
           </div>
-        </td>
-      </tr>
+        </div>
+      </div>
       {expanded &&
         kids.map((child) => (
-          <ItemRow
+          <ItemCard
             key={child.id}
             item={child}
             depth={depth + 1}
             childrenByParent={childrenByParent}
             showCategory={showCategory}
-            visibleFields={visibleFields}
             categoriesById={categoriesById}
             editMode={editMode}
             onEdit={onEdit}
@@ -371,6 +341,34 @@ function ItemRow({
           />
         ))}
     </>
+  );
+}
+
+type Tone = "blue" | "amber" | "violet" | "emerald" | "neutral";
+const toneClasses: Record<Tone, string> = {
+  blue: "bg-blue-100 text-blue-800",
+  amber: "bg-amber-100 text-amber-800",
+  violet: "bg-violet-100 text-violet-800",
+  emerald: "bg-emerald-100 text-emerald-800",
+  neutral: "bg-neutral-100 text-neutral-700",
+};
+
+function Badge({
+  tone,
+  title,
+  children,
+}: {
+  tone: Tone;
+  title?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <span
+      className={`text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded ${toneClasses[tone]}`}
+      title={title}
+    >
+      {children}
+    </span>
   );
 }
 

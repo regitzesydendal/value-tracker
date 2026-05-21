@@ -6,10 +6,19 @@ type Props = {
   children: (session: Session) => React.ReactNode;
 };
 
+// On localhost we pre-fill the email field so we don't have to retype it
+// every time the dev server restarts. This is a dev-only convenience —
+// the deployed site still shows an empty field.
+const isLocalhost =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1");
+const devEmail = isLocalhost ? "regitzesydendal@gmail.com" : "";
+
 export function AuthGate({ children }: Props) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(devEmail);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
