@@ -30,6 +30,7 @@ type ItemRow = {
   current_value: number;
   notes: string | null;
   is_pending: boolean;
+  marketplace_url: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -55,6 +56,7 @@ function rowToItem(r: ItemRow): Item {
     currentValue: r.current_value,
     notes: r.notes ?? undefined,
     isPending: r.is_pending,
+    marketplaceUrl: r.marketplace_url ?? undefined,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -121,6 +123,7 @@ export async function upsertItem(userId: string, item: Item): Promise<void> {
     current_value: item.currentValue,
     notes: item.notes ?? null,
     is_pending: item.isPending ?? false,
+    marketplace_url: item.marketplaceUrl ?? null,
     updated_at: item.updatedAt,
   });
   if (error) throw error;
@@ -129,6 +132,29 @@ export async function upsertItem(userId: string, item: Item): Promise<void> {
 export async function deleteItem(id: string): Promise<void> {
   const { error } = await supabase.from("items").delete().eq("id", id);
   if (error) throw error;
+}
+
+// Bulk-insert items (used by CSV import). Returns the number of rows inserted.
+export async function insertItems(userId: string, items: Item[]): Promise<number> {
+  if (items.length === 0) return 0;
+  const rows = items.map((item) => ({
+    id: item.id,
+    user_id: userId,
+    category_id: item.categoryId,
+    name: item.name,
+    serial: item.serial ?? null,
+    version: item.version ?? null,
+    set: item.set ?? null,
+    bought_for: item.boughtFor ?? null,
+    current_value: item.currentValue,
+    notes: item.notes ?? null,
+    is_pending: item.isPending ?? false,
+    marketplace_url: item.marketplaceUrl ?? null,
+    updated_at: item.updatedAt,
+  }));
+  const { error } = await supabase.from("items").insert(rows);
+  if (error) throw error;
+  return rows.length;
 }
 
 // ---------- Snapshots ----------

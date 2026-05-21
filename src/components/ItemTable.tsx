@@ -1,5 +1,6 @@
+import { useEffect, useState } from "react";
 import type { Category, FieldKey, Item } from "../lib/types";
-import { formatDKK } from "../lib/format";
+import { formatDKK, parseAmount } from "../lib/format";
 
 const fieldLabels: Record<FieldKey, string> = {
   serial: "N.",
@@ -12,16 +13,20 @@ type Props = {
   items: Item[];
   category: Category | null; // null = "Alle"
   categoriesById: Map<string, Category>;
+  editMode: boolean;
   onEdit: (item: Item) => void;
   onDelete: (id: string) => void;
+  onUpdateValue: (item: Item, newCurrentValue: number) => void;
 };
 
 export function ItemTable({
   items,
   category,
   categoriesById,
+  editMode,
   onEdit,
   onDelete,
+  onUpdateValue,
 }: Props) {
   const showCategory = category === null;
   const visibleFields: FieldKey[] = category
@@ -90,6 +95,18 @@ export function ItemTable({
                       Ingående
                     </span>
                   )}
+                  {item.marketplaceUrl && (
+                    <a
+                      href={item.marketplaceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-neutral-400 hover:text-blue-600 text-xs"
+                      title="Åbn link til pris-side"
+                    >
+                      ↗
+                    </a>
+                  )}
                 </span>
               </td>
               {showCategory && (
@@ -118,10 +135,17 @@ export function ItemTable({
                 </td>
               )}
               <td className="px-4 py-2.5 text-right font-medium text-neutral-900 tabular-nums">
-                {formatDKK(item.currentValue)}
+                {editMode ? (
+                  <InlineValueInput
+                    initial={item.currentValue}
+                    onCommit={(v) => onUpdateValue(item, v)}
+                  />
+                ) : (
+                  formatDKK(item.currentValue)
+                )}
               </td>
               <td className="px-2 py-2.5 text-right">
-                <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className={`flex gap-1 justify-end transition-opacity ${editMode ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
                   <button
                     onClick={() => onEdit(item)}
                     className="text-xs px-2 py-1 rounded hover:bg-neutral-200 text-neutral-600"
@@ -162,5 +186,46 @@ export function ItemTable({
         </tfoot>
       </table>
     </div>
+  );
+}
+
+function InlineValueInput({
+  initial,
+  onCommit,
+}: {
+  initial: number;
+  onCommit: (newValue: number) => void;
+}) {
+  const [value, setValue] = useState(String(initial));
+
+  useEffect(() => {
+    setValue(String(initial));
+  }, [initial]);
+
+  function commit() {
+    const n = parseAmount(value);
+    if (n == null) {
+      setValue(String(initial));
+      return;
+    }
+    if (n !== initial) onCommit(n);
+  }
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        if (e.key === "Escape") {
+          setValue(String(initial));
+          (e.target as HTMLInputElement).blur();
+        }
+      }}
+      className="w-28 px-2 py-1 text-right tabular-nums text-sm border border-neutral-300 rounded focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-neutral-900"
+    />
   );
 }

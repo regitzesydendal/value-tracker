@@ -30,6 +30,7 @@ export function ItemFormModal({
   const [currentValue, setCurrentValue] = useState("");
   const [notes, setNotes] = useState("");
   const [isPending, setIsPending] = useState(false);
+  const [marketplaceUrl, setMarketplaceUrl] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -43,6 +44,7 @@ export function ItemFormModal({
       setCurrentValue(String(initial.currentValue ?? ""));
       setNotes(initial.notes ?? "");
       setIsPending(!!initial.isPending);
+      setMarketplaceUrl(initial.marketplaceUrl ?? "");
     } else {
       setCategoryId(defaultCategoryId || categories[0]?.id || "");
       setName("");
@@ -53,6 +55,7 @@ export function ItemFormModal({
       setCurrentValue("");
       setNotes("");
       setIsPending(false);
+      setMarketplaceUrl("");
     }
   }, [open, initial, defaultCategoryId, categories]);
 
@@ -75,6 +78,7 @@ export function ItemFormModal({
       currentValue: parseAmount(currentValue) ?? 0,
       notes: notes.trim() || undefined,
       isPending: isPending || undefined,
+      marketplaceUrl: marketplaceUrl.trim() || undefined,
     });
   }
 
@@ -169,6 +173,19 @@ export function ItemFormModal({
                 placeholder="0"
                 required
               />
+            </Field>
+
+            <Field label="Cardmarket / TCGPlayer / eBay link (valgfrit)">
+              <input
+                type="url"
+                value={marketplaceUrl}
+                onChange={(e) => setMarketplaceUrl(e.target.value)}
+                className="input"
+                placeholder="https://www.cardmarket.com/..."
+              />
+              <div className="text-xs text-neutral-500 mt-1">
+                Lyn-link til at tjekke pris. Vises som ↗ ud for navnet i listen.
+              </div>
             </Field>
 
             <Field label="Noter (valgfrit)">

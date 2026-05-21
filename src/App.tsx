@@ -7,6 +7,7 @@ import { CategoryFormModal } from "./components/CategoryFormModal";
 import { AuthGate } from "./components/AuthGate";
 import { SnapshotButton } from "./components/SnapshotButton";
 import { HistoryView } from "./components/HistoryView";
+import { CsvImportModal } from "./components/CsvImportModal";
 import {
   loadData,
   loadSnapshots,
@@ -39,6 +40,9 @@ function TrackerApp({ session }: { session: Session }) {
 
   const [catModalOpen, setCatModalOpen] = useState(false);
   const [editingCat, setEditingCat] = useState<Category | null>(null);
+
+  const [editMode, setEditMode] = useState(false);
+  const [csvOpen, setCsvOpen] = useState(false);
 
   async function refreshSnapshots() {
     try {
@@ -142,6 +146,25 @@ function TrackerApp({ session }: { session: Session }) {
     } catch (e) {
       alert(`Kunne ikke gemme: ${e instanceof Error ? e.message : String(e)}`);
       // Reload from server to undo the optimistic change
+      const fresh = await loadData(userId);
+      setData(fresh);
+    }
+  }
+
+  async function handleUpdateItemValue(item: Item, newCurrentValue: number) {
+    const updated: Item = {
+      ...item,
+      currentValue: newCurrentValue,
+      updatedAt: new Date().toISOString(),
+    };
+    setData((prev) => ({
+      ...prev,
+      items: prev.items.map((i) => (i.id === item.id ? updated : i)),
+    }));
+    try {
+      await upsertItem(userId, updated);
+    } catch (e) {
+      alert(`Kunne ikke gemme: ${e instanceof Error ? e.message : String(e)}`);
       const fresh = await loadData(userId);
       setData(fresh);
     }
@@ -327,6 +350,25 @@ function TrackerApp({ session }: { session: Session }) {
               )}
 
               <button
+                onClick={() => setEditMode((v) => !v)}
+                className={`text-sm px-3 py-1.5 rounded ${
+                  editMode
+                    ? "bg-amber-500 text-white hover:bg-amber-600"
+                    : "border border-neutral-200 hover:bg-neutral-100 text-neutral-700"
+                }`}
+                title="Hurtig redigér: klik direkte på en pris for at opdatere"
+              >
+                {editMode ? "✓ Færdig" : "✏️ Hurtig redigér"}
+              </button>
+
+              <button
+                onClick={() => setCsvOpen(true)}
+                className="text-sm px-3 py-1.5 rounded border border-neutral-200 hover:bg-neutral-100 text-neutral-700"
+              >
+                ⇪ Importér
+              </button>
+
+              <button
                 onClick={handleAddItem}
                 className="text-sm px-3 py-1.5 rounded bg-neutral-900 text-white hover:bg-neutral-800"
               >
@@ -356,8 +398,10 @@ function TrackerApp({ session }: { session: Session }) {
               items={filteredItems}
               category={currentCategory}
               categoriesById={categoriesById}
+              editMode={editMode}
               onEdit={handleEditItem}
               onDelete={handleDeleteItem}
+              onUpdateValue={handleUpdateItemValue}
             />
           ) : (
             <HistoryView
@@ -391,6 +435,18 @@ function TrackerApp({ session }: { session: Session }) {
         }}
         onSubmit={handleSubmitCategory}
         onDelete={handleDeleteCategory}
+      />
+
+      <CsvImportModal
+        open={csvOpen}
+        userId={userId}
+        categories={data.categories}
+        defaultCategoryId={selected !== "all" ? selected : undefined}
+        onClose={() => setCsvOpen(false)}
+        onImported={async () => {
+          const fresh = await loadData(userId);
+          setData(fresh);
+        }}
       />
     </div>
   );

@@ -18,6 +18,7 @@ export type Item = {
   currentValue: number;
   notes?: string;
   isPending?: boolean; // "Ingående lager" — potential buy / incoming stock
+  marketplaceUrl?: string; // e.g. Cardmarket / TCGPlayer / eBay listing URL
   createdAt: string;
   updatedAt: string;
 };
