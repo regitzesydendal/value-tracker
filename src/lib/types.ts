@@ -6,6 +6,7 @@ export type Category = {
   fields: FieldKey[];
   order: number;
   color?: string; // hex string, e.g. "#f59e0b" — used for sidebar dot + row accent
+  icon?: string;  // emoji or "pokeball" token — see lib/categoryIcons
 };
 
 // Where the physical item lives. Stored as a string in the DB, but the UI

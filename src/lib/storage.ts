@@ -25,6 +25,7 @@ type CategoryRow = {
   fields: string[];
   order: number;
   color: string | null;
+  icon: string | null;
 };
 
 type ItemRow = {
@@ -58,6 +59,7 @@ function rowToCategory(r: CategoryRow): Category {
     fields: (r.fields ?? []) as Category["fields"],
     order: r.order,
     color: r.color ?? undefined,
+    icon: r.icon ?? undefined,
   };
 }
 
@@ -124,6 +126,7 @@ export async function upsertCategory(
     fields: cat.fields,
     order: cat.order,
     color: cat.color ?? null,
+    icon: cat.icon ?? null,
     updated_at: new Date().toISOString(),
   });
   if (error) throw error;

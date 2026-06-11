@@ -10,6 +10,7 @@ import { HistoryView } from "./components/HistoryView";
 import { CsvImportModal } from "./components/CsvImportModal";
 import { WishlistView } from "./components/WishlistView";
 import { WishlistFormModal } from "./components/WishlistFormModal";
+import { CategoryIcon } from "./lib/categoryIcons";
 import {
   loadData,
   loadSnapshots,
@@ -232,6 +233,7 @@ function TrackerApp({ session }: { session: Session }) {
     name: string;
     fields: FieldKey[];
     color?: string;
+    icon?: string;
   }) {
     const isUpdate = !!payload.id;
     const cat: Category = isUpdate
@@ -240,12 +242,14 @@ function TrackerApp({ session }: { session: Session }) {
           name: payload.name,
           fields: payload.fields,
           color: payload.color,
+          icon: payload.icon,
         }
       : {
           id: makeId(),
           name: payload.name,
           fields: payload.fields,
           color: payload.color,
+          icon: payload.icon,
           order: Math.max(0, ...data.categories.map((c) => c.order)) + 1,
         };
 
@@ -397,14 +401,19 @@ function TrackerApp({ session }: { session: Session }) {
       <main className="flex-1 min-w-0">
         <header className="border-b border-neutral-200 bg-white px-8 py-4 flex flex-wrap items-center gap-x-3 gap-y-2">
           <div className="min-w-0">
-            <h1 className="text-xl font-semibold tracking-tight whitespace-nowrap">
-              {view === "history"
-                ? "Historik"
-                : view === "wishlist"
-                  ? "Ønskeliste"
-                  : currentCategory
-                    ? currentCategory.name
-                    : "Alle elementer"}
+            <h1 className="text-xl font-semibold tracking-tight whitespace-nowrap flex items-center gap-2">
+              {view === "list" && currentCategory && (
+                <CategoryIcon category={currentCategory} size={22} />
+              )}
+              <span>
+                {view === "history"
+                  ? "Historik"
+                  : view === "wishlist"
+                    ? "Ønskeliste"
+                    : currentCategory
+                      ? currentCategory.name
+                      : "Alle elementer"}
+              </span>
             </h1>
             <div className="text-xs text-neutral-500 mt-0.5">
               {view === "history"

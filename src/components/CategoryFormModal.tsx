@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Category, FieldKey } from "../lib/types";
+import { CATEGORY_ICON_CHOICES, renderCategoryIcon } from "../lib/categoryIcons";
 
 const allFields: { key: FieldKey; label: string }[] = [
   { key: "serial", label: "Nummer (f.eks. /99)" },
@@ -31,6 +32,7 @@ type Props = {
     name: string;
     fields: FieldKey[];
     color?: string;
+    icon?: string;
   }) => void;
   onDelete?: (id: string) => void;
 };
@@ -45,12 +47,14 @@ export function CategoryFormModal({
   const [name, setName] = useState("");
   const [fields, setFields] = useState<FieldKey[]>([]);
   const [color, setColor] = useState<string | undefined>(undefined);
+  const [icon, setIcon] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (!open) return;
     setName(initial?.name ?? "");
     setFields(initial?.fields ?? []);
     setColor(initial?.color);
+    setIcon(initial?.icon);
   }, [open, initial]);
 
   if (!open) return null;
@@ -64,7 +68,7 @@ export function CategoryFormModal({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    onSubmit({ id: initial?.id, name: name.trim(), fields, color });
+    onSubmit({ id: initial?.id, name: name.trim(), fields, color, icon });
   }
 
   return (
@@ -124,6 +128,31 @@ export function CategoryFormModal({
                   />
                 ))}
               </div>
+            </div>
+
+            <div>
+              <div className="text-xs font-medium text-neutral-600 mb-2">Logo</div>
+              <div className="flex flex-wrap gap-2">
+                {CATEGORY_ICON_CHOICES.map((token) => (
+                  <button
+                    key={token}
+                    type="button"
+                    // Click a selected icon again to clear it (back to automatic).
+                    onClick={() => setIcon((cur) => (cur === token ? undefined : token))}
+                    className={`w-9 h-9 rounded-lg border-2 flex items-center justify-center ${
+                      icon === token
+                        ? "border-neutral-900 bg-neutral-50"
+                        : "border-neutral-200 hover:border-neutral-400"
+                    }`}
+                    title={token === "pokeball" ? "Pokéball" : token}
+                  >
+                    {renderCategoryIcon(token, 20)}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-neutral-500 mt-2">
+                Vælg et logo — ellers vælges et automatisk ud fra navnet.
+              </p>
             </div>
 
             <div>

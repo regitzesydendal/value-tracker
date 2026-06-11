@@ -1,5 +1,6 @@
 import type { Category, Item } from "../lib/types";
 import { formatDKK } from "../lib/format";
+import { resolveCategoryIcon, renderCategoryIcon } from "../lib/categoryIcons";
 
 type Props = {
   categories: Category[];
@@ -69,6 +70,7 @@ export function Sidebar({
           const total = totalsByCategory.get(cat.id) || 0;
           const count = topLevelItems.filter((i) => i.categoryId === cat.id).length;
           const active = selectedId === cat.id && !wishlistActive;
+          const iconToken = resolveCategoryIcon(cat);
           return (
             <button
               key={cat.id}
@@ -81,12 +83,14 @@ export function Sidebar({
             >
               <div className="flex justify-between items-center">
                 <span className="flex items-center gap-2 min-w-0">
-                  {cat.color && (
+                  {iconToken ? (
+                    renderCategoryIcon(iconToken, 16)
+                  ) : cat.color ? (
                     <span
                       className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
                       style={{ backgroundColor: cat.color }}
                     />
-                  )}
+                  ) : null}
                   <span className="truncate">{cat.name}</span>
                 </span>
                 <span className="tabular-nums text-xs opacity-80 ml-2 shrink-0">

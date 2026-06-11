@@ -10,6 +10,90 @@ const fieldLabels: Record<FieldKey, string> = {
   boughtFor: "Købt for",
 };
 
+// ---------- Sorting ----------
+type SortKey = "name" | "category" | FieldKey | "currentValue";
+type SortDir = "asc" | "desc";
+
+function comparableValue(
+  item: Item,
+  key: SortKey,
+  categoriesById: Map<string, Category>,
+): string | number | null {
+  switch (key) {
+    case "name":
+      return item.name?.toLowerCase() ?? null;
+    case "category":
+      return categoriesById.get(item.categoryId)?.name?.toLowerCase() ?? null;
+    case "serial":
+      return item.serial?.toLowerCase() ?? null;
+    case "version":
+      return item.version?.toLowerCase() ?? null;
+    case "set":
+      return item.set?.toLowerCase() ?? null;
+    case "boughtFor":
+      return item.boughtFor ?? null;
+    case "currentValue":
+      return item.currentValue ?? null;
+  }
+}
+
+function makeComparator(
+  key: SortKey,
+  dir: SortDir,
+  categoriesById: Map<string, Category>,
+): (a: Item, b: Item) => number {
+  const mult = dir === "asc" ? 1 : -1;
+  return (a, b) => {
+    const va = comparableValue(a, key, categoriesById);
+    const vb = comparableValue(b, key, categoriesById);
+    const aMissing = va === null || va === "";
+    const bMissing = vb === null || vb === "";
+    // Empty values always sort to the bottom, regardless of direction.
+    if (aMissing && bMissing) return 0;
+    if (aMissing) return 1;
+    if (bMissing) return -1;
+    if (typeof va === "number" && typeof vb === "number") return (va - vb) * mult;
+    return String(va).localeCompare(String(vb), "da-DK") * mult;
+  };
+}
+
+function SortableTh({
+  label,
+  col,
+  align = "left",
+  activeKey,
+  dir,
+  onSort,
+}: {
+  label: string;
+  col: SortKey;
+  align?: "left" | "right";
+  activeKey: SortKey | null;
+  dir: SortDir;
+  onSort: (key: SortKey) => void;
+}) {
+  const active = activeKey === col;
+  return (
+    <th
+      className={`font-medium px-4 py-2.5 ${align === "right" ? "text-right" : "text-left"}`}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(col)}
+        className={`inline-flex items-center gap-1 uppercase tracking-wider hover:text-neutral-900 ${
+          align === "right" ? "flex-row-reverse" : ""
+        } ${active ? "text-neutral-900" : ""}`}
+        title="Klik for at sortere"
+      >
+        <span>{label}</span>
+        <span className="text-[10px] w-2 inline-block">
+          {active ? (dir === "asc" ? "▲" : "▼") : ""}
+        </span>
+      </button>
+    </th>
+  );
+}
+
 type Props = {
   items: Item[];          // filtered top-level items to display
   allItems: Item[];       // every item in scope (used to look up children)
@@ -50,6 +134,33 @@ export function ItemTable({
     return m;
   }, [allItems]);
 
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  // Clicking a column cycles: ascending → descending → no sort.
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      if (sortDir === "asc") setSortDir("desc");
+      else {
+        setSortKey(null);
+        setSortDir("asc");
+      }
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
+
+  const comparator = useMemo(
+    () => (sortKey ? makeComparator(sortKey, sortDir, categoriesById) : null),
+    [sortKey, sortDir, categoriesById],
+  );
+
+  const sortedItems = useMemo(
+    () => (comparator ? [...items].sort(comparator) : items),
+    [items, comparator],
+  );
+
   const total = items.reduce((s, i) => s + (i.currentValue || 0), 0);
   const colSpan =
     1 + // name
@@ -70,43 +181,34 @@ export function ItemTable({
       <table className="w-full text-sm">
         <thead className="bg-neutral-50 text-neutral-500 text-xs uppercase tracking-wider">
           <tr>
-            <th className="text-left font-medium px-4 py-2.5">Navn</th>
+            <SortableTh label="Navn" col="name" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
             {showCategory && (
-              <th className="text-left font-medium px-4 py-2.5">Kategori</th>
+              <SortableTh label="Kategori" col="category" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
             )}
             {visibleFields.includes("serial") && (
-              <th className="text-left font-medium px-4 py-2.5">
-                {fieldLabels.serial}
-              </th>
+              <SortableTh label={fieldLabels.serial} col="serial" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
             )}
             {visibleFields.includes("version") && (
-              <th className="text-left font-medium px-4 py-2.5">
-                {fieldLabels.version}
-              </th>
+              <SortableTh label={fieldLabels.version} col="version" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
             )}
             {visibleFields.includes("set") && (
-              <th className="text-left font-medium px-4 py-2.5">
-                {fieldLabels.set}
-              </th>
+              <SortableTh label={fieldLabels.set} col="set" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
             )}
             {visibleFields.includes("boughtFor") && (
-              <th className="text-right font-medium px-4 py-2.5">
-                {fieldLabels.boughtFor}
-              </th>
+              <SortableTh label={fieldLabels.boughtFor} col="boughtFor" align="right" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
             )}
-            <th className="text-right font-medium px-4 py-2.5">
-              Nuværende værdi
-            </th>
+            <SortableTh label="Nuværende værdi" col="currentValue" align="right" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
             <th className="w-28"></th>
           </tr>
         </thead>
         <tbody>
-          {items.map((item) => (
+          {sortedItems.map((item) => (
             <ItemRow
               key={item.id}
               item={item}
               depth={0}
               childrenByParent={childrenByParent}
+              comparator={comparator}
               showCategory={showCategory}
               visibleFields={visibleFields}
               categoriesById={categoriesById}
@@ -141,6 +243,7 @@ type RowProps = {
   item: Item;
   depth: number;
   childrenByParent: Map<string, Item[]>;
+  comparator: ((a: Item, b: Item) => number) | null;
   showCategory: boolean;
   visibleFields: FieldKey[];
   categoriesById: Map<string, Category>;
@@ -155,6 +258,7 @@ function ItemRow({
   item,
   depth,
   childrenByParent,
+  comparator,
   showCategory,
   visibleFields,
   categoriesById,
@@ -165,7 +269,8 @@ function ItemRow({
   onAddChild,
 }: RowProps) {
   const [expanded, setExpanded] = useState(false);
-  const kids = childrenByParent.get(item.id) ?? [];
+  const rawKids = childrenByParent.get(item.id) ?? [];
+  const kids = comparator ? [...rawKids].sort(comparator) : rawKids;
   const hasKids = kids.length > 0;
   const isContainer = !!item.isContainer;
   const childrenSum = kids.reduce((s, k) => s + (k.currentValue || 0), 0);
@@ -360,6 +465,7 @@ function ItemRow({
             item={child}
             depth={depth + 1}
             childrenByParent={childrenByParent}
+            comparator={comparator}
             showCategory={showCategory}
             visibleFields={visibleFields}
             categoriesById={categoriesById}
