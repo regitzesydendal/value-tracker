@@ -7,6 +7,9 @@ type Props = {
   selectedId: string | "all";
   onSelect: (id: string | "all") => void;
   onAddCategory: () => void;
+  wishlistActive: boolean;
+  wishlistCount: number;
+  onSelectWishlist: () => void;
 };
 
 export function Sidebar({
@@ -15,6 +18,9 @@ export function Sidebar({
   selectedId,
   onSelect,
   onAddCategory,
+  wishlistActive,
+  wishlistCount,
+  onSelectWishlist,
 }: Props) {
   // Children are "inside" a parent — only count top-level items in the totals
   // so we don't double-count.
@@ -48,7 +54,7 @@ export function Sidebar({
         <button
           onClick={() => onSelect("all")}
           className={`w-full text-left px-3 py-2 rounded text-sm flex justify-between items-center ${
-            selectedId === "all"
+            selectedId === "all" && !wishlistActive
               ? "bg-neutral-900 text-white"
               : "hover:bg-neutral-100 text-neutral-700"
           }`}
@@ -62,7 +68,7 @@ export function Sidebar({
         {sorted.map((cat) => {
           const total = totalsByCategory.get(cat.id) || 0;
           const count = topLevelItems.filter((i) => i.categoryId === cat.id).length;
-          const active = selectedId === cat.id;
+          const active = selectedId === cat.id && !wishlistActive;
           return (
             <button
               key={cat.id}
@@ -100,6 +106,23 @@ export function Sidebar({
       </nav>
 
       <div className="p-2 border-t border-neutral-200 mt-2">
+        <button
+          onClick={onSelectWishlist}
+          className={`w-full text-left px-3 py-2 rounded text-sm flex justify-between items-center ${
+            wishlistActive
+              ? "bg-neutral-900 text-white"
+              : "hover:bg-neutral-100 text-neutral-700"
+          }`}
+        >
+          <span className="flex items-center gap-2">
+            <span>🛒</span>
+            <span>Ønskeliste</span>
+          </span>
+          <span className="tabular-nums text-xs opacity-80">{wishlistCount}</span>
+        </button>
+      </div>
+
+      <div className="p-2 border-t border-neutral-200">
         <button
           onClick={onAddCategory}
           className="w-full text-left px-3 py-2 rounded text-sm text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"

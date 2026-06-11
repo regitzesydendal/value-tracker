@@ -8,6 +8,8 @@ import { AuthGate } from "./components/AuthGate";
 import { SnapshotButton } from "./components/SnapshotButton";
 import { HistoryView } from "./components/HistoryView";
 import { CsvImportModal } from "./components/CsvImportModal";
+import { WishlistView } from "./components/WishlistView";
+import { WishlistFormModal } from "./components/WishlistFormModal";
 import {
   loadData,
   loadSnapshots,
@@ -15,10 +17,20 @@ import {
   deleteCategory as dbDeleteCategory,
   upsertItem,
   deleteItem as dbDeleteItem,
+  loadWishlist,
+  upsertWishlistItem,
+  deleteWishlistItem as dbDeleteWishlistItem,
   makeId,
 } from "./lib/storage";
 import { supabase } from "./lib/supabase";
-import type { AppData, Category, FieldKey, Item, Snapshot } from "./lib/types";
+import type {
+  AppData,
+  Category,
+  FieldKey,
+  Item,
+  Snapshot,
+  WishlistItem,
+} from "./lib/types";
 
 export default function App() {
   return <AuthGate>{(session) => <TrackerApp session={session} />}</AuthGate>;
@@ -28,9 +40,13 @@ function TrackerApp({ session }: { session: Session }) {
   const userId = session.user.id;
   const [data, setData] = useState<AppData>({ categories: [], items: [] });
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
-  const [view, setView] = useState<"list" | "history">("list");
+  const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
+  const [view, setView] = useState<"list" | "history" | "wishlist">("list");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [wishlistModalOpen, setWishlistModalOpen] = useState(false);
+  const [editingWishlistItem, setEditingWishlistItem] = useState<WishlistItem | null>(null);
 
   const [selected, setSelected] = useState<string | "all">("all");
   const [search, setSearch] = useState("");
@@ -61,13 +77,15 @@ function TrackerApp({ session }: { session: Session }) {
     let cancelled = false;
     (async () => {
       try {
-        const [fresh, snaps] = await Promise.all([
+        const [fresh, snaps, wish] = await Promise.all([
           loadData(userId),
           loadSnapshots(userId).catch(() => [] as Snapshot[]),
+          loadWishlist(userId).catch(() => [] as WishlistItem[]),
         ]);
         if (!cancelled) {
           setData(fresh);
           setSnapshots(snaps);
+          setWishlist(wish);
         }
       } catch (e) {
         if (!cancelled) setLoadError(e instanceof Error ? e.message : String(e));
@@ -267,6 +285,65 @@ function TrackerApp({ session }: { session: Session }) {
     }
   }
 
+  function handleAddWishlist() {
+    setEditingWishlistItem(null);
+    setWishlistModalOpen(true);
+  }
+
+  function handleEditWishlist(item: WishlistItem) {
+    setEditingWishlistItem(item);
+    setWishlistModalOpen(true);
+  }
+
+  async function handleSubmitWishlist(
+    payload: Omit<WishlistItem, "id" | "createdAt" | "updatedAt"> & { id?: string },
+  ) {
+    const nowIso = new Date().toISOString();
+    const isUpdate = !!payload.id;
+    const item: WishlistItem = isUpdate
+      ? {
+          ...(wishlist.find((w) => w.id === payload.id) as WishlistItem),
+          ...payload,
+          id: payload.id!,
+          updatedAt: nowIso,
+        }
+      : {
+          ...payload,
+          id: makeId(),
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        };
+
+    setWishlist((prev) =>
+      isUpdate ? prev.map((w) => (w.id === item.id ? item : w)) : [...prev, item],
+    );
+    setWishlistModalOpen(false);
+    setEditingWishlistItem(null);
+
+    try {
+      await upsertWishlistItem(userId, item);
+    } catch (e) {
+      alert(`Kunne ikke gemme: ${e instanceof Error ? e.message : String(e)}`);
+      setWishlist(await loadWishlist(userId));
+    }
+  }
+
+  async function handleDeleteWishlist(id: string) {
+    const prev = wishlist;
+    setWishlist((p) => p.filter((w) => w.id !== id));
+    try {
+      await dbDeleteWishlistItem(id);
+    } catch (e) {
+      alert(`Kunne ikke slette: ${e instanceof Error ? e.message : String(e)}`);
+      setWishlist(prev);
+    }
+  }
+
+  async function handleMarkBought(item: WishlistItem) {
+    if (!confirm(`Marker "${item.name}" som købt og fjern fra ønskelisten?`)) return;
+    await handleDeleteWishlist(item.id);
+  }
+
   async function handleSignOut() {
     await supabase.auth.signOut();
   }
@@ -307,8 +384,14 @@ function TrackerApp({ session }: { session: Session }) {
         categories={data.categories}
         items={data.items}
         selectedId={selected}
-        onSelect={setSelected}
+        onSelect={(id) => {
+          setSelected(id);
+          setView("list");
+        }}
         onAddCategory={handleAddCategory}
+        wishlistActive={view === "wishlist"}
+        wishlistCount={wishlist.length}
+        onSelectWishlist={() => setView("wishlist")}
       />
 
       <main className="flex-1 min-w-0">
@@ -317,16 +400,20 @@ function TrackerApp({ session }: { session: Session }) {
             <h1 className="text-xl font-semibold tracking-tight whitespace-nowrap">
               {view === "history"
                 ? "Historik"
-                : currentCategory
-                  ? currentCategory.name
-                  : "Alle elementer"}
+                : view === "wishlist"
+                  ? "Ønskeliste"
+                  : currentCategory
+                    ? currentCategory.name
+                    : "Alle elementer"}
             </h1>
             <div className="text-xs text-neutral-500 mt-0.5">
               {view === "history"
                 ? `${snapshots.length > 0 ? new Set(snapshots.map((s) => s.date)).size : 0} snapshot${
                     new Set(snapshots.map((s) => s.date)).size === 1 ? "" : "s"
                   }`
-                : `${filteredItems.length} element${filteredItems.length === 1 ? "" : "er"}`}
+                : view === "wishlist"
+                  ? `${wishlist.length} ting${wishlist.length === 1 ? "" : ""}`
+                  : `${filteredItems.length} element${filteredItems.length === 1 ? "" : "er"}`}
             </div>
           </div>
 
@@ -435,12 +522,20 @@ function TrackerApp({ session }: { session: Session }) {
               onUpdateValue={handleUpdateItemValue}
               onAddChild={handleAddChild}
             />
-          ) : (
+          ) : view === "history" ? (
             <HistoryView
               userId={userId}
               data={data}
               snapshots={snapshots}
               onSnapshotsChanged={refreshSnapshots}
+            />
+          ) : (
+            <WishlistView
+              items={wishlist}
+              onAdd={handleAddWishlist}
+              onEdit={handleEditWishlist}
+              onDelete={handleDeleteWishlist}
+              onMarkBought={handleMarkBought}
             />
           )}
         </div>
@@ -481,6 +576,16 @@ function TrackerApp({ session }: { session: Session }) {
           const fresh = await loadData(userId);
           setData(fresh);
         }}
+      />
+
+      <WishlistFormModal
+        open={wishlistModalOpen}
+        initial={editingWishlistItem}
+        onClose={() => {
+          setWishlistModalOpen(false);
+          setEditingWishlistItem(null);
+        }}
+        onSubmit={handleSubmitWishlist}
       />
     </div>
   );

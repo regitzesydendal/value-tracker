@@ -69,4 +69,28 @@ export type Snapshot = {
   notes?: string;
 };
 
+// "Ønskeliste" — things the user wants to buy. Kept separate from the
+// collection so it never counts toward net worth.
+export type WishlistPriority = "high" | "medium" | "low";
+
+export const wishlistPriorityLabels: Record<WishlistPriority, string> = {
+  high: "Høj",
+  medium: "Mellem",
+  low: "Lav",
+};
+
+export const wishlistPriorityOrder: WishlistPriority[] = ["high", "medium", "low"];
+
+export type WishlistItem = {
+  id: string;
+  name: string;
+  price?: number;          // expected price per unit (kr.)
+  quantity: number;
+  expectedDate?: string;   // ISO date (YYYY-MM-DD)
+  priority?: WishlistPriority;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export const TOTAL_CATEGORY_ID = "__total__";

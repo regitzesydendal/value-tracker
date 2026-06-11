@@ -2,7 +2,15 @@ import { supabase } from "./supabase";
 import { seedData } from "./seed";
 import { historicalSnapshots } from "./historicalSeed";
 import { TOTAL_CATEGORY_ID } from "./types";
-import type { AppData, Category, Item, ItemLocation, Snapshot } from "./types";
+import type {
+  AppData,
+  Category,
+  Item,
+  ItemLocation,
+  Snapshot,
+  WishlistItem,
+  WishlistPriority,
+} from "./types";
 
 export function makeId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -342,6 +350,68 @@ export async function backfillHistoricalSnapshots(userId: string): Promise<numbe
     .upsert(rows, { onConflict: "user_id,date,category_id" });
   if (error) throw error;
   return rows.length;
+}
+
+// ---------- Wishlist ("Ønskeliste") ----------
+
+type WishlistRow = {
+  id: string;
+  user_id: string;
+  name: string;
+  price: number | null;
+  quantity: number;
+  expected_date: string | null;
+  priority: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+function rowToWishlistItem(r: WishlistRow): WishlistItem {
+  return {
+    id: r.id,
+    name: r.name,
+    price: r.price ?? undefined,
+    quantity: r.quantity ?? 1,
+    expectedDate: r.expected_date ?? undefined,
+    priority: (r.priority ?? undefined) as WishlistPriority | undefined,
+    notes: r.notes ?? undefined,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
+
+export async function loadWishlist(userId: string): Promise<WishlistItem[]> {
+  const { data, error } = await supabase
+    .from("wishlist")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data as WishlistRow[]).map(rowToWishlistItem);
+}
+
+export async function upsertWishlistItem(
+  userId: string,
+  item: WishlistItem,
+): Promise<void> {
+  const { error } = await supabase.from("wishlist").upsert({
+    id: item.id,
+    user_id: userId,
+    name: item.name,
+    price: item.price ?? null,
+    quantity: item.quantity ?? 1,
+    expected_date: item.expectedDate ?? null,
+    priority: item.priority ?? null,
+    notes: item.notes ?? null,
+    updated_at: item.updatedAt,
+  });
+  if (error) throw error;
+}
+
+export async function deleteWishlistItem(id: string): Promise<void> {
+  const { error } = await supabase.from("wishlist").delete().eq("id", id);
+  if (error) throw error;
 }
 
 // ---------- First-time setup ----------
