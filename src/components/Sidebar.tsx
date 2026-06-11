@@ -1,6 +1,10 @@
 import type { Category, Item } from "../lib/types";
 import { formatDKK } from "../lib/format";
-import { resolveCategoryIcon, renderCategoryIcon } from "../lib/categoryIcons";
+import {
+  resolveCategoryIcon,
+  renderCategoryIcon,
+  resolveCategoryColor,
+} from "../lib/categoryIcons";
 
 type Props = {
   categories: Category[];
@@ -71,10 +75,14 @@ export function Sidebar({
           const count = topLevelItems.filter((i) => i.categoryId === cat.id).length;
           const active = selectedId === cat.id && !wishlistActive;
           const iconToken = resolveCategoryIcon(cat);
+          const catColor = resolveCategoryColor(cat);
           return (
             <button
               key={cat.id}
               onClick={() => onSelect(cat.id)}
+              style={{
+                borderLeft: catColor ? `3px solid ${catColor}` : "3px solid transparent",
+              }}
               className={`w-full text-left px-3 py-2 rounded text-sm mt-0.5 ${
                 active
                   ? "bg-neutral-900 text-white"

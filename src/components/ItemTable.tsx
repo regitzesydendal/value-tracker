@@ -2,6 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import type { Category, FieldKey, Item } from "../lib/types";
 import { itemLocationLabels } from "../lib/types";
 import { formatDKK, parseAmount } from "../lib/format";
+import {
+  resolveCategoryIcon,
+  renderCategoryIcon,
+  resolveCategoryColor,
+} from "../lib/categoryIcons";
 
 const fieldLabels: Record<FieldKey, string> = {
   serial: "N.",
@@ -274,6 +279,9 @@ function ItemRow({
   const hasKids = kids.length > 0;
   const isContainer = !!item.isContainer;
   const childrenSum = kids.reduce((s, k) => s + (k.currentValue || 0), 0);
+  const cat = categoriesById.get(item.categoryId);
+  const catIconNode = cat ? renderCategoryIcon(resolveCategoryIcon(cat), 16) : null;
+  const catColor = cat ? resolveCategoryColor(cat) : undefined;
 
   return (
     <>
@@ -284,7 +292,10 @@ function ItemRow({
       >
         <td
           className="px-4 py-2.5 font-medium text-neutral-900"
-          style={{ paddingLeft: 16 + depth * 24 }}
+          style={{
+            paddingLeft: 16 + depth * 24,
+            borderLeft: catColor ? `4px solid ${catColor}` : undefined,
+          }}
         >
           <span className="inline-flex items-center gap-2">
             {isContainer && (
@@ -297,6 +308,7 @@ function ItemRow({
               </button>
             )}
             {!isContainer && depth === 0 && <span className="w-4" />}
+            {catIconNode && <span className="shrink-0">{catIconNode}</span>}
             {item.name}
             {isContainer && (
               <span
@@ -373,15 +385,13 @@ function ItemRow({
         {showCategory && (
           <td className="px-4 py-2.5 text-neutral-500">
             <span className="inline-flex items-center gap-1.5">
-              {categoriesById.get(item.categoryId)?.color && (
+              {catColor && (
                 <span
                   className="inline-block w-2 h-2 rounded-full shrink-0"
-                  style={{
-                    backgroundColor: categoriesById.get(item.categoryId)!.color,
-                  }}
+                  style={{ backgroundColor: catColor }}
                 />
               )}
-              {categoriesById.get(item.categoryId)?.name ?? "—"}
+              {cat?.name ?? "—"}
             </span>
           </td>
         )}

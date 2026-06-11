@@ -28,6 +28,25 @@ export function guessIconKey(name: string): string | undefined {
   return undefined;
 }
 
+// Guess a category color from its name, mirroring the icon guesses.
+export function guessCategoryColor(name: string): string | undefined {
+  const n = name.toLowerCase();
+  if (/pok[eé]|pokemon|pokémon/.test(n)) return "#ef4444"; // red
+  if (/one ?piece|luffy|straw|pirat|jolly/.test(n)) return "#f59e0b"; // amber/yellow
+  if (/fodbold|football|soccer/.test(n)) return "#16a34a"; // green
+  if (/basket/.test(n)) return "#f97316"; // orange
+  if (/likvid|kontant|penge|cash|money/.test(n)) return "#3b82f6"; // blue
+  return undefined;
+}
+
+// Explicit color first, else a guess from the name.
+export function resolveCategoryColor(category: {
+  name: string;
+  color?: string;
+}): string | undefined {
+  return category.color ?? guessCategoryColor(category.name);
+}
+
 function PokeballIcon({ size = 18 }: { size?: number }) {
   return (
     <svg
