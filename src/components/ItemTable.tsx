@@ -223,10 +223,10 @@ export function ItemTable({
       <table className="w-full text-sm">
         <thead className="bg-neutral-50 text-neutral-500 text-xs uppercase tracking-wider">
           <tr>
-            <SortableTh label="Navn" col="name" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
             {showCategory && (
-              <SortableTh label="Kategori" col="category" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+              <SortableTh label="" col="category" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
             )}
+            <SortableTh label="Navn" col="name" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
             {visibleFields.includes("serial") && (
               <SortableTh label={fieldLabels.serial} col="serial" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
             )}
@@ -344,11 +344,30 @@ function ItemRow({
           depth > 0 ? "bg-neutral-50/40" : ""
         }`}
       >
+        {showCategory && (
+          <td
+            className="px-3 py-2.5 text-center"
+            style={{ borderLeft: catColor ? `4px solid ${catColor}` : undefined }}
+            title={cat?.name ?? ""}
+          >
+            {catIconNode ??
+              (catColor ? (
+                <span
+                  className="inline-block w-2.5 h-2.5 rounded-full"
+                  style={{ backgroundColor: catColor }}
+                />
+              ) : null)}
+          </td>
+        )}
         <td
           className="px-4 py-2.5 font-medium text-neutral-900"
           style={{
             paddingLeft: 16 + depth * 24,
-            borderLeft: catColor ? `4px solid ${catColor}` : undefined,
+            borderLeft: showCategory
+              ? undefined
+              : catColor
+                ? `4px solid ${catColor}`
+                : undefined,
           }}
         >
           <span className="inline-flex items-center gap-2">
@@ -362,7 +381,9 @@ function ItemRow({
               </button>
             )}
             {!isContainer && depth === 0 && <span className="w-4" />}
-            {catIconNode && <span className="shrink-0">{catIconNode}</span>}
+            {!showCategory && catIconNode && (
+              <span className="shrink-0">{catIconNode}</span>
+            )}
             {item.name}
             {item.grade && (
               <span
@@ -434,19 +455,6 @@ function ItemRow({
             )}
           </span>
         </td>
-        {showCategory && (
-          <td className="px-4 py-2.5 text-neutral-500">
-            <span className="inline-flex items-center gap-1.5">
-              {catColor && (
-                <span
-                  className="inline-block w-2 h-2 rounded-full shrink-0"
-                  style={{ backgroundColor: catColor }}
-                />
-              )}
-              {cat?.name ?? "—"}
-            </span>
-          </td>
-        )}
         {visibleFields.includes("serial") && (
           <td className="px-4 py-2.5 text-neutral-600 tabular-nums">
             {item.serial || "—"}
