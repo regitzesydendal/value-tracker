@@ -409,7 +409,7 @@ function TrackerApp({ session }: { session: Session }) {
       />
 
       <main className="flex-1 min-w-0">
-        <header className="border-b border-neutral-200 bg-white/80 px-8 py-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <header className="border-b border-neutral-200 bg-white px-8 py-4 flex flex-wrap items-center gap-x-3 gap-y-2">
           <div className="min-w-0">
             <h1 className="text-xl font-semibold tracking-tight whitespace-nowrap flex items-center gap-2">
               {view === "list" && currentCategory && (

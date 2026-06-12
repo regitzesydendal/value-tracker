@@ -43,7 +43,7 @@ export function Sidebar({
   const sorted = [...categories].sort((a, b) => a.order - b.order);
 
   return (
-    <aside className="w-64 shrink-0 border-r border-neutral-200 bg-white/75">
+    <aside className="w-64 shrink-0 border-r border-neutral-200 bg-white">
       <div className="p-5 border-b border-neutral-200">
         <div className="text-xs uppercase tracking-wider text-neutral-500">
           I alt

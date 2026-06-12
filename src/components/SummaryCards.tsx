@@ -95,7 +95,7 @@ function Card({
   const color =
     tone === "up" ? "text-green-600" : tone === "down" ? "text-red-600" : "text-neutral-900";
   return (
-    <div className="border border-neutral-200 rounded bg-white/80 p-4">
+    <div className="border border-neutral-200 rounded bg-white p-4">
       <div className="text-xs uppercase tracking-wider text-neutral-500">{label}</div>
       <div className={`text-2xl font-semibold mt-1 tabular-nums ${color}`}>{value}</div>
       {sub && <div className={`text-xs mt-0.5 tabular-nums ${color}`}>{sub}</div>}

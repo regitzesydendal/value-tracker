@@ -219,7 +219,7 @@ export function ItemTable({
   }
 
   return (
-    <div className="border border-neutral-200 rounded overflow-hidden bg-white/80">
+    <div className="border border-neutral-200 rounded overflow-hidden bg-white">
       <table className="w-full text-sm">
         <thead className="bg-neutral-50 text-neutral-500 text-xs uppercase tracking-wider">
           <tr>
