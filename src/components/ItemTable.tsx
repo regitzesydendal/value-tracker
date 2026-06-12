@@ -16,7 +16,7 @@ const fieldLabels: Record<FieldKey, string> = {
 };
 
 // ---------- Sorting ----------
-type SortKey = "name" | "category" | FieldKey | "currentValue";
+type SortKey = "name" | "category" | FieldKey | "currentValue" | "gain";
 type SortDir = "asc" | "desc";
 
 function comparableValue(
@@ -39,7 +39,33 @@ function comparableValue(
       return item.boughtFor ?? null;
     case "currentValue":
       return item.currentValue ?? null;
+    case "gain":
+      return item.boughtFor != null ? item.currentValue - item.boughtFor : null;
   }
+}
+
+// Profit/loss for one item — null when we don't know what it was bought for.
+function itemGain(item: Item): { gain: number; pct: number | null } | null {
+  if (item.boughtFor == null) return null;
+  const gain = item.currentValue - item.boughtFor;
+  const pct = item.boughtFor > 0 ? (gain / item.boughtFor) * 100 : null;
+  return { gain, pct };
+}
+
+function GainText({ gain, pct }: { gain: number; pct: number | null }) {
+  const up = gain >= 0;
+  return (
+    <span className={up ? "text-green-600" : "text-red-600"}>
+      {up ? "+" : "−"}
+      {formatDKK(Math.abs(gain))}
+      {pct != null && (
+        <span className="block text-[10px] opacity-80">
+          {up ? "+" : "−"}
+          {Math.abs(pct).toFixed(0)}%
+        </span>
+      )}
+    </span>
+  );
 }
 
 function makeComparator(
@@ -126,6 +152,8 @@ export function ItemTable({
   const visibleFields: FieldKey[] = category
     ? category.fields
     : (["serial", "version", "set", "boughtFor"] as FieldKey[]);
+  // Show a profit/loss column whenever purchase prices are in play.
+  const showGain = visibleFields.includes("boughtFor");
 
   const childrenByParent = useMemo(() => {
     const m = new Map<string, Item[]>();
@@ -167,11 +195,15 @@ export function ItemTable({
   );
 
   const total = items.reduce((s, i) => s + (i.currentValue || 0), 0);
-  const colSpan =
-    1 + // name
-    (showCategory ? 1 : 0) +
-    visibleFields.length +
-    1; // current value
+  const totalBought = items.reduce((s, i) => s + (i.boughtFor ?? 0), 0);
+  const totalGain = items.reduce(
+    (s, i) => (i.boughtFor != null ? s + (i.currentValue - i.boughtFor) : s),
+    0,
+  );
+  const totalGainPct = totalBought > 0 ? (totalGain / totalBought) * 100 : null;
+  // Footer: label spans everything up to (and including) the last field column;
+  // then come the current-value, optional gain, and actions cells.
+  const footerLabelSpan = 1 + (showCategory ? 1 : 0) + visibleFields.length;
 
   if (items.length === 0) {
     return (
@@ -203,6 +235,9 @@ export function ItemTable({
               <SortableTh label={fieldLabels.boughtFor} col="boughtFor" align="right" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
             )}
             <SortableTh label="Nuværende værdi" col="currentValue" align="right" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+            {showGain && (
+              <SortableTh label="Gevinst" col="gain" align="right" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+            )}
             <th className="w-28"></th>
           </tr>
         </thead>
@@ -215,6 +250,7 @@ export function ItemTable({
               childrenByParent={childrenByParent}
               comparator={comparator}
               showCategory={showCategory}
+              showGain={showGain}
               visibleFields={visibleFields}
               categoriesById={categoriesById}
               editMode={editMode}
@@ -229,13 +265,22 @@ export function ItemTable({
           <tr>
             <td
               className="px-4 py-2.5 text-xs uppercase tracking-wider text-neutral-500"
-              colSpan={colSpan - 1}
+              colSpan={footerLabelSpan}
             >
               I alt
             </td>
             <td className="px-4 py-2.5 text-right font-semibold tabular-nums">
               {formatDKK(total)}
             </td>
+            {showGain && (
+              <td className="px-4 py-2.5 text-right font-semibold tabular-nums">
+                {totalBought > 0 ? (
+                  <GainText gain={totalGain} pct={totalGainPct} />
+                ) : (
+                  <span className="text-neutral-300">—</span>
+                )}
+              </td>
+            )}
             <td></td>
           </tr>
         </tfoot>
@@ -250,6 +295,7 @@ type RowProps = {
   childrenByParent: Map<string, Item[]>;
   comparator: ((a: Item, b: Item) => number) | null;
   showCategory: boolean;
+  showGain: boolean;
   visibleFields: FieldKey[];
   categoriesById: Map<string, Category>;
   editMode: boolean;
@@ -265,6 +311,7 @@ function ItemRow({
   childrenByParent,
   comparator,
   showCategory,
+  showGain,
   visibleFields,
   categoriesById,
   editMode,
@@ -282,6 +329,7 @@ function ItemRow({
   const cat = categoriesById.get(item.categoryId);
   const catIconNode = cat ? renderCategoryIcon(resolveCategoryIcon(cat), 16) : null;
   const catColor = cat ? resolveCategoryColor(cat) : undefined;
+  const gain = itemGain(item);
 
   return (
     <>
@@ -433,6 +481,15 @@ function ItemRow({
             </>
           )}
         </td>
+        {showGain && (
+          <td className="px-4 py-2.5 text-right tabular-nums">
+            {gain ? (
+              <GainText gain={gain.gain} pct={gain.pct} />
+            ) : (
+              <span className="text-neutral-300">—</span>
+            )}
+          </td>
+        )}
         <td className="px-2 py-2.5 text-right">
           <div
             className={`flex gap-1 justify-end transition-opacity ${
@@ -477,6 +534,7 @@ function ItemRow({
             childrenByParent={childrenByParent}
             comparator={comparator}
             showCategory={showCategory}
+            showGain={showGain}
             visibleFields={visibleFields}
             categoriesById={categoriesById}
             editMode={editMode}

@@ -10,6 +10,7 @@ import { HistoryView } from "./components/HistoryView";
 import { CsvImportModal } from "./components/CsvImportModal";
 import { WishlistView } from "./components/WishlistView";
 import { WishlistFormModal } from "./components/WishlistFormModal";
+import { AllocationChart } from "./components/AllocationChart";
 import { CategoryIcon } from "./lib/categoryIcons";
 import {
   loadData,
@@ -520,8 +521,10 @@ function TrackerApp({ session }: { session: Session }) {
 
         <div className="p-8">
           {view === "list" ? (
-            <ItemTable
-              items={filteredItems}
+            <>
+              {selected === "all" && !search && <AllocationChart data={data} />}
+              <ItemTable
+                items={filteredItems}
               allItems={data.items}
               category={currentCategory}
               categoriesById={categoriesById}
@@ -530,7 +533,8 @@ function TrackerApp({ session }: { session: Session }) {
               onDelete={handleDeleteItem}
               onUpdateValue={handleUpdateItemValue}
               onAddChild={handleAddChild}
-            />
+              />
+            </>
           ) : view === "history" ? (
             <HistoryView
               userId={userId}
