@@ -680,9 +680,9 @@ function CellInput({
           el.blur();
         }
       }}
-      className={`bg-transparent rounded px-1.5 py-1 border border-transparent hover:border-neutral-200 focus:bg-white focus:border-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300 ${
-        numeric ? "text-right tabular-nums w-28" : ""
-      } ${grow ? "flex-1 min-w-0" : ""}`}
+      className={`rounded px-1.5 py-1 border border-neutral-300 bg-white hover:border-neutral-400 focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-400 ${
+        numeric ? "text-right tabular-nums w-24" : grow ? "flex-1 min-w-0" : "w-20"
+      }`}
     />
   );
 }

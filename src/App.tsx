@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { Sidebar } from "./components/Sidebar";
 import { ItemTable } from "./components/ItemTable";
@@ -21,6 +21,7 @@ import {
   deleteCategory as dbDeleteCategory,
   upsertItem,
   deleteItem as dbDeleteItem,
+  takeSnapshot,
   loadWishlist,
   upsertWishlistItem,
   deleteWishlistItem as dbDeleteWishlistItem,
@@ -75,6 +76,32 @@ function TrackerApp({ session }: { session: Session }) {
       console.warn("loadSnapshots failed:", e);
     }
   }
+
+  // Keep a ref to the latest data so the debounced auto-snapshot reads current
+  // values (not a stale closure).
+  const dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  });
+
+  // After the user changes values, automatically take/refresh today's snapshot
+  // so they never have to click the snapshot button. Debounced so rapid edits
+  // result in a single write once things settle.
+  const autoSnapTimer = useRef<number | null>(null);
+  function scheduleAutoSnapshot() {
+    if (autoSnapTimer.current) window.clearTimeout(autoSnapTimer.current);
+    autoSnapTimer.current = window.setTimeout(() => {
+      const today = new Date().toISOString().slice(0, 10);
+      takeSnapshot(userId, today, dataRef.current)
+        .then(() => refreshSnapshots())
+        .catch((e) => console.warn("auto-snapshot failed:", e));
+    }, 2000);
+  }
+  useEffect(() => {
+    return () => {
+      if (autoSnapTimer.current) window.clearTimeout(autoSnapTimer.current);
+    };
+  }, []);
 
   // Initial load: fetch items + categories + snapshots for this user.
   useEffect(() => {
@@ -184,6 +211,7 @@ function TrackerApp({ session }: { session: Session }) {
     }));
     setItemModalOpen(false);
     setEditingItem(null);
+    scheduleAutoSnapshot();
 
     try {
       await upsertItem(userId, item);
@@ -207,6 +235,7 @@ function TrackerApp({ session }: { session: Session }) {
       ...prev,
       items: prev.items.map((i) => (i.id === item.id ? updated : i)),
     }));
+    scheduleAutoSnapshot();
     try {
       await upsertItem(userId, updated);
     } catch (e) {
@@ -220,6 +249,7 @@ function TrackerApp({ session }: { session: Session }) {
     if (!confirm("Slet dette element?")) return;
     const prevItems = data.items;
     setData((prev) => ({ ...prev, items: prev.items.filter((i) => i.id !== id) }));
+    scheduleAutoSnapshot();
     try {
       await dbDeleteItem(id);
     } catch (e) {
