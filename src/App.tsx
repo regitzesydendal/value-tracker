@@ -13,6 +13,7 @@ import { WishlistFormModal } from "./components/WishlistFormModal";
 import { AllocationChart } from "./components/AllocationChart";
 import { SummaryCards } from "./components/SummaryCards";
 import { CategoryIcon } from "./lib/categoryIcons";
+import themeBg from "./assets/theme-bg.svg";
 import {
   loadData,
   loadSnapshots,
@@ -386,6 +387,11 @@ function TrackerApp({ session }: { session: Session }) {
 
   return (
     <div className="min-h-screen flex">
+      <div
+        aria-hidden
+        className="fixed inset-0 -z-10 pointer-events-none"
+        style={{ backgroundImage: `url(${themeBg})`, backgroundRepeat: "repeat" }}
+      />
       <Sidebar
         categories={data.categories}
         items={data.items}
