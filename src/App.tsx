@@ -195,10 +195,12 @@ function TrackerApp({ session }: { session: Session }) {
     }
   }
 
-  async function handleUpdateItemValue(item: Item, newCurrentValue: number) {
+  // Patch one or more fields of an item and save (used by the inline,
+  // spreadsheet-style table editing). Optimistic; reverts on error.
+  async function handlePatchItem(item: Item, patch: Partial<Item>) {
     const updated: Item = {
       ...item,
-      currentValue: newCurrentValue,
+      ...patch,
       updatedAt: new Date().toISOString(),
     };
     setData((prev) => ({
@@ -488,7 +490,7 @@ function TrackerApp({ session }: { session: Session }) {
                       ? "bg-amber-500 text-white hover:bg-amber-600"
                       : "border border-neutral-200 hover:bg-neutral-100 text-neutral-700"
                   }`}
-                  title="Hurtig redigér: klik direkte på en pris for at opdatere"
+                  title="Regneark-tilstand: klik i felterne og ret direkte. Tab/Enter = næste felt, gemmes automatisk."
                 >
                   {editMode ? "✓ Færdig" : "✏️ Redigér"}
                 </button>
@@ -545,7 +547,7 @@ function TrackerApp({ session }: { session: Session }) {
               editMode={editMode}
               onEdit={handleEditItem}
               onDelete={handleDeleteItem}
-              onUpdateValue={handleUpdateItemValue}
+              onPatch={handlePatchItem}
               onAddChild={handleAddChild}
               />
             </>

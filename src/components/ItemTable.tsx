@@ -138,7 +138,7 @@ type Props = {
   editMode: boolean;
   onEdit: (item: Item) => void;
   onDelete: (id: string) => void;
-  onUpdateValue: (item: Item, newCurrentValue: number) => void;
+  onPatch: (item: Item, patch: Partial<Item>) => void;
   onAddChild: (parent: Item) => void;
 };
 
@@ -150,7 +150,7 @@ export function ItemTable({
   editMode,
   onEdit,
   onDelete,
-  onUpdateValue,
+  onPatch,
   onAddChild,
 }: Props) {
   const showCategory = category === null;
@@ -261,7 +261,7 @@ export function ItemTable({
               editMode={editMode}
               onEdit={onEdit}
               onDelete={onDelete}
-              onUpdateValue={onUpdateValue}
+              onPatch={onPatch}
               onAddChild={onAddChild}
             />
           ))}
@@ -306,7 +306,7 @@ type RowProps = {
   editMode: boolean;
   onEdit: (item: Item) => void;
   onDelete: (id: string) => void;
-  onUpdateValue: (item: Item, newCurrentValue: number) => void;
+  onPatch: (item: Item, patch: Partial<Item>) => void;
   onAddChild: (parent: Item) => void;
 };
 
@@ -322,7 +322,7 @@ function ItemRow({
   editMode,
   onEdit,
   onDelete,
-  onUpdateValue,
+  onPatch,
   onAddChild,
 }: RowProps) {
   const [expanded, setExpanded] = useState(false);
@@ -370,7 +370,7 @@ function ItemRow({
                 : undefined,
           }}
         >
-          <span className="inline-flex items-center gap-2">
+          <span className="flex items-center gap-2 min-w-0">
             {isContainer && (
               <button
                 onClick={() => setExpanded((v) => !v)}
@@ -384,7 +384,19 @@ function ItemRow({
             {!showCategory && catIconNode && (
               <span className="shrink-0">{catIconNode}</span>
             )}
-            {item.name}
+            {editMode ? (
+              <CellInput
+                initial={item.name}
+                placeholder="Navn"
+                grow
+                onCommit={(raw) => {
+                  const v = raw.trim();
+                  if (v) onPatch(item, { name: v });
+                }}
+              />
+            ) : (
+              <span className="truncate">{item.name}</span>
+            )}
             {item.grade && (
               <span
                 className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-neutral-800 text-white shrink-0"
@@ -457,24 +469,63 @@ function ItemRow({
         </td>
         {visibleFields.includes("serial") && (
           <td className="px-4 py-2.5 text-neutral-600 tabular-nums">
-            {item.serial || "—"}
+            {editMode ? (
+              <CellInput
+                initial={item.serial ?? ""}
+                placeholder="—"
+                onCommit={(raw) => onPatch(item, { serial: raw.trim() || undefined })}
+              />
+            ) : (
+              item.serial || "—"
+            )}
           </td>
         )}
         {visibleFields.includes("version") && (
           <td className="px-4 py-2.5 text-neutral-600">
-            {item.version || "—"}
+            {editMode ? (
+              <CellInput
+                initial={item.version ?? ""}
+                placeholder="—"
+                grow
+                onCommit={(raw) => onPatch(item, { version: raw.trim() || undefined })}
+              />
+            ) : (
+              item.version || "—"
+            )}
           </td>
         )}
         {visibleFields.includes("set") && (
-          <td className="px-4 py-2.5 text-neutral-600">{item.set || "—"}</td>
+          <td className="px-4 py-2.5 text-neutral-600">
+            {editMode ? (
+              <CellInput
+                initial={item.set ?? ""}
+                placeholder="—"
+                grow
+                onCommit={(raw) => onPatch(item, { set: raw.trim() || undefined })}
+              />
+            ) : (
+              item.set || "—"
+            )}
+          </td>
         )}
         {visibleFields.includes("boughtFor") && (
           <td className="px-4 py-2.5 text-right text-neutral-600 tabular-nums">
-            {item.boughtFor != null ? formatDKK(itemTotalBought(item)!) : "—"}
-            {qty > 1 && item.boughtFor != null && (
-              <div className="text-[10px] text-neutral-400 tabular-nums">
-                {qty} × {formatDKK(item.boughtFor)}
-              </div>
+            {editMode ? (
+              <CellInput
+                initial={item.boughtFor != null ? String(item.boughtFor) : ""}
+                numeric
+                placeholder="—"
+                onCommit={(raw) => onPatch(item, { boughtFor: parseAmount(raw) })}
+              />
+            ) : (
+              <>
+                {item.boughtFor != null ? formatDKK(itemTotalBought(item)!) : "—"}
+                {qty > 1 && item.boughtFor != null && (
+                  <div className="text-[10px] text-neutral-400 tabular-nums">
+                    {qty} × {formatDKK(item.boughtFor)}
+                  </div>
+                )}
+              </>
             )}
           </td>
         )}
@@ -483,9 +534,11 @@ function ItemRow({
           title={`Sidst opdateret: ${(item.updatedAt ?? "").slice(0, 10) || "—"}`}
         >
           {editMode ? (
-            <InlineValueInput
-              initial={item.currentValue}
-              onCommit={(v) => onUpdateValue(item, v)}
+            <CellInput
+              initial={String(item.currentValue ?? "")}
+              numeric
+              placeholder="0"
+              onCommit={(raw) => onPatch(item, { currentValue: parseAmount(raw) ?? 0 })}
             />
           ) : (
             <>
@@ -565,7 +618,7 @@ function ItemRow({
             editMode={editMode}
             onEdit={onEdit}
             onDelete={onDelete}
-            onUpdateValue={onUpdateValue}
+            onPatch={onPatch}
             onAddChild={onAddChild}
           />
         ))}
@@ -573,57 +626,63 @@ function ItemRow({
   );
 }
 
-function InlineValueInput({
+// A spreadsheet-style editable cell: looks like plain text, becomes an input on
+// click/focus, auto-saves on blur, Enter commits and jumps to the next cell,
+// Tab moves to the next cell natively, Esc cancels.
+function CellInput({
   initial,
   onCommit,
+  numeric = false,
+  grow = false,
+  placeholder,
 }: {
-  initial: number;
-  onCommit: (newValue: number) => void;
+  initial: string;
+  onCommit: (raw: string) => void;
+  numeric?: boolean;
+  grow?: boolean;
+  placeholder?: string;
 }) {
-  const [value, setValue] = useState(String(initial));
+  const [value, setValue] = useState(initial);
 
   useEffect(() => {
-    setValue(String(initial));
+    setValue(initial);
   }, [initial]);
 
   function commit() {
-    const n = parseAmount(value);
-    if (n == null) {
-      setValue(String(initial));
-      return;
-    }
-    if (n !== initial) onCommit(n);
+    if (value !== initial) onCommit(value);
   }
 
   return (
     <input
       type="text"
-      inputMode="decimal"
-      data-price-input
+      inputMode={numeric ? "decimal" : undefined}
+      data-cell-input
       value={value}
+      placeholder={placeholder}
       onChange={(e) => setValue(e.target.value)}
+      onFocus={(e) => e.currentTarget.select()}
       onBlur={commit}
       onKeyDown={(e) => {
-        const el = e.target as HTMLInputElement;
+        const el = e.currentTarget;
         if (e.key === "Enter") {
           e.preventDefault();
-          // Commit, then jump straight to the next price field for fast updating.
           const inputs = Array.from(
-            document.querySelectorAll<HTMLInputElement>("[data-price-input]"),
+            document.querySelectorAll<HTMLInputElement>("[data-cell-input]"),
           );
           const next = inputs[inputs.indexOf(el) + 1];
-          el.blur();
+          el.blur(); // commits via onBlur
           if (next) {
             next.focus();
             next.select();
           }
-        }
-        if (e.key === "Escape") {
-          setValue(String(initial));
+        } else if (e.key === "Escape") {
+          setValue(initial);
           el.blur();
         }
       }}
-      className="w-28 px-2 py-1 text-right tabular-nums text-sm border border-neutral-300 rounded focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-neutral-900"
+      className={`bg-transparent rounded px-1.5 py-1 border border-transparent hover:border-neutral-200 focus:bg-white focus:border-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300 ${
+        numeric ? "text-right tabular-nums w-28" : ""
+      } ${grow ? "flex-1 min-w-0" : ""}`}
     />
   );
 }
