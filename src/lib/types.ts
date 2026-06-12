@@ -41,8 +41,11 @@ export type Item = {
   serial?: string;
   version?: string;
   set?: string;
-  boughtFor?: number;
-  currentValue: number;
+  grade?: string;          // condition / grade, e.g. "PSA 10", "Raw"
+  purchaseDate?: string;   // ISO date (YYYY-MM-DD)
+  quantity?: number;       // how many copies (defaults to 1)
+  boughtFor?: number;      // per-unit purchase price
+  currentValue: number;    // per-unit current value
   notes?: string;
   isPending?: boolean; // "Ingående lager" — potential buy / incoming stock
   marketplaceUrl?: string; // e.g. Cardmarket / TCGPlayer / eBay listing URL

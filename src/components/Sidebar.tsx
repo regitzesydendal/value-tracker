@@ -1,5 +1,6 @@
 import type { Category, Item } from "../lib/types";
 import { formatDKK } from "../lib/format";
+import { itemTotalValue } from "../lib/itemCalc";
 import {
   resolveCategoryIcon,
   renderCategoryIcon,
@@ -30,15 +31,12 @@ export function Sidebar({
   // Children are "inside" a parent — only count top-level items in the totals
   // so we don't double-count.
   const topLevelItems = items.filter((i) => !i.parentId);
-  const grandTotal = topLevelItems.reduce(
-    (sum, i) => sum + (i.currentValue || 0),
-    0,
-  );
+  const grandTotal = topLevelItems.reduce((sum, i) => sum + itemTotalValue(i), 0);
   const totalsByCategory = new Map<string, number>();
   for (const item of topLevelItems) {
     totalsByCategory.set(
       item.categoryId,
-      (totalsByCategory.get(item.categoryId) || 0) + (item.currentValue || 0),
+      (totalsByCategory.get(item.categoryId) || 0) + itemTotalValue(item),
     );
   }
 

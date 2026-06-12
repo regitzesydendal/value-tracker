@@ -11,6 +11,7 @@ import { CsvImportModal } from "./components/CsvImportModal";
 import { WishlistView } from "./components/WishlistView";
 import { WishlistFormModal } from "./components/WishlistFormModal";
 import { AllocationChart } from "./components/AllocationChart";
+import { SummaryCards } from "./components/SummaryCards";
 import { CategoryIcon } from "./lib/categoryIcons";
 import {
   loadData,
@@ -522,7 +523,12 @@ function TrackerApp({ session }: { session: Session }) {
         <div className="p-8">
           {view === "list" ? (
             <>
-              {selected === "all" && !search && <AllocationChart data={data} />}
+              {selected === "all" && !search && (
+                <>
+                  <SummaryCards data={data} snapshots={snapshots} />
+                  <AllocationChart data={data} />
+                </>
+              )}
               <ItemTable
                 items={filteredItems}
               allItems={data.items}

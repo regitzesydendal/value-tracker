@@ -29,6 +29,9 @@ export function ItemFormModal({
   const [serial, setSerial] = useState("");
   const [version, setVersion] = useState("");
   const [set, setSet] = useState("");
+  const [grade, setGrade] = useState("");
+  const [purchaseDate, setPurchaseDate] = useState("");
+  const [quantity, setQuantity] = useState("1");
   const [boughtFor, setBoughtFor] = useState("");
   const [currentValue, setCurrentValue] = useState("");
   const [notes, setNotes] = useState("");
@@ -49,6 +52,9 @@ export function ItemFormModal({
       setSerial(initial.serial ?? "");
       setVersion(initial.version ?? "");
       setSet(initial.set ?? "");
+      setGrade(initial.grade ?? "");
+      setPurchaseDate(initial.purchaseDate ?? "");
+      setQuantity(String(initial.quantity ?? 1));
       setBoughtFor(initial.boughtFor != null ? String(initial.boughtFor) : "");
       setCurrentValue(String(initial.currentValue ?? ""));
       setNotes(initial.notes ?? "");
@@ -71,6 +77,9 @@ export function ItemFormModal({
       setSerial("");
       setVersion("");
       setSet("");
+      setGrade("");
+      setPurchaseDate("");
+      setQuantity("1");
       setBoughtFor("");
       setCurrentValue("");
       setNotes("");
@@ -100,6 +109,12 @@ export function ItemFormModal({
       serial: fields.includes("serial") ? serial.trim() || undefined : undefined,
       version: fields.includes("version") ? version.trim() || undefined : undefined,
       set: fields.includes("set") ? set.trim() || undefined : undefined,
+      grade: grade.trim() || undefined,
+      purchaseDate: purchaseDate || undefined,
+      quantity: (() => {
+        const q = parseInt(quantity, 10);
+        return Number.isFinite(q) && q > 0 ? q : 1;
+      })(),
       boughtFor: fields.includes("boughtFor") ? parseAmount(boughtFor) : undefined,
       currentValue: parseAmount(currentValue) ?? 0,
       notes: notes.trim() || undefined,
@@ -219,6 +234,44 @@ export function ItemFormModal({
                 inputMode="decimal"
                 placeholder="0"
                 required
+              />
+              {(() => {
+                const q = parseInt(quantity, 10);
+                const v = parseAmount(currentValue);
+                return Number.isFinite(q) && q > 1 && v != null ? (
+                  <div className="text-xs text-neutral-500 mt-1 tabular-nums">
+                    {q} stk. = {(v * q).toLocaleString("da-DK")} kr. i alt
+                  </div>
+                ) : null;
+              })()}
+            </Field>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Antal">
+                <input
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  className="input tabular-nums"
+                  inputMode="numeric"
+                  placeholder="1"
+                />
+              </Field>
+              <Field label="Stand / grade (valgfrit)">
+                <input
+                  value={grade}
+                  onChange={(e) => setGrade(e.target.value)}
+                  className="input"
+                  placeholder="PSA 10, Raw …"
+                />
+              </Field>
+            </div>
+
+            <Field label="Købsdato (valgfrit)">
+              <input
+                type="date"
+                value={purchaseDate}
+                onChange={(e) => setPurchaseDate(e.target.value)}
+                className="input"
               />
             </Field>
 

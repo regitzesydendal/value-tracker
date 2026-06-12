@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Category, FieldKey, Item } from "../lib/types";
 import { itemLocationLabels } from "../lib/types";
 import { formatDKK, parseAmount } from "../lib/format";
+import { itemTotalValue, itemTotalBought } from "../lib/itemCalc";
 import {
   resolveCategoryIcon,
   renderCategoryIcon,
@@ -36,19 +37,23 @@ function comparableValue(
     case "set":
       return item.set?.toLowerCase() ?? null;
     case "boughtFor":
-      return item.boughtFor ?? null;
+      return itemTotalBought(item);
     case "currentValue":
-      return item.currentValue ?? null;
-    case "gain":
-      return item.boughtFor != null ? item.currentValue - item.boughtFor : null;
+      return itemTotalValue(item);
+    case "gain": {
+      const bought = itemTotalBought(item);
+      return bought != null ? itemTotalValue(item) - bought : null;
+    }
   }
 }
 
-// Profit/loss for one item — null when we don't know what it was bought for.
+// Profit/loss for one item (quantity-aware) — null when we don't know what it
+// was bought for.
 function itemGain(item: Item): { gain: number; pct: number | null } | null {
-  if (item.boughtFor == null) return null;
-  const gain = item.currentValue - item.boughtFor;
-  const pct = item.boughtFor > 0 ? (gain / item.boughtFor) * 100 : null;
+  const bought = itemTotalBought(item);
+  if (bought == null) return null;
+  const gain = itemTotalValue(item) - bought;
+  const pct = bought > 0 ? (gain / bought) * 100 : null;
   return { gain, pct };
 }
 
@@ -194,12 +199,12 @@ export function ItemTable({
     [items, comparator],
   );
 
-  const total = items.reduce((s, i) => s + (i.currentValue || 0), 0);
-  const totalBought = items.reduce((s, i) => s + (i.boughtFor ?? 0), 0);
-  const totalGain = items.reduce(
-    (s, i) => (i.boughtFor != null ? s + (i.currentValue - i.boughtFor) : s),
-    0,
-  );
+  const total = items.reduce((s, i) => s + itemTotalValue(i), 0);
+  const totalBought = items.reduce((s, i) => s + (itemTotalBought(i) ?? 0), 0);
+  const totalGain = items.reduce((s, i) => {
+    const bought = itemTotalBought(i);
+    return bought != null ? s + (itemTotalValue(i) - bought) : s;
+  }, 0);
   const totalGainPct = totalBought > 0 ? (totalGain / totalBought) * 100 : null;
   // Footer: label spans everything up to (and including) the last field column;
   // then come the current-value, optional gain, and actions cells.
@@ -325,7 +330,8 @@ function ItemRow({
   const kids = comparator ? [...rawKids].sort(comparator) : rawKids;
   const hasKids = kids.length > 0;
   const isContainer = !!item.isContainer;
-  const childrenSum = kids.reduce((s, k) => s + (k.currentValue || 0), 0);
+  const childrenSum = kids.reduce((s, k) => s + itemTotalValue(k), 0);
+  const qty = item.quantity ?? 1;
   const cat = categoriesById.get(item.categoryId);
   const catIconNode = cat ? renderCategoryIcon(resolveCategoryIcon(cat), 16) : null;
   const catColor = cat ? resolveCategoryColor(cat) : undefined;
@@ -358,62 +364,60 @@ function ItemRow({
             {!isContainer && depth === 0 && <span className="w-4" />}
             {catIconNode && <span className="shrink-0">{catIconNode}</span>}
             {item.name}
+            {item.grade && (
+              <span
+                className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-neutral-800 text-white shrink-0"
+                title="Stand / grade"
+              >
+                {item.grade}
+              </span>
+            )}
             {isContainer && (
               <span
-                className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800"
+                className="text-[11px] px-1 py-0.5 rounded bg-blue-100 text-blue-800 shrink-0"
                 title={hasKids ? `${kids.length} kort indeni` : "Container — kan rumme kort"}
               >
-                {hasKids ? `${kids.length} kort` : "container"}
+                {hasKids ? `📦 ${kids.length}` : "📦"}
               </span>
             )}
             {item.isPending && (
               <span
-                className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800"
+                className="text-[11px] px-1 py-0.5 rounded bg-amber-100 shrink-0"
                 title="Ingående lager — potentielt køb"
               >
-                Ingående
+                ⏳
               </span>
             )}
             {item.wantMore && (
               <span
-                className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-violet-100 text-violet-800"
+                className="text-[11px] px-1 py-0.5 rounded bg-violet-100 shrink-0"
                 title={
                   item.desiredBuyPrice != null
                     ? `Vil købe mere — ønsker ≤ ${formatDKK(item.desiredBuyPrice)}`
                     : "Vil købe mere"
                 }
               >
-                ★ Køb mere
-                {item.desiredBuyPrice != null && (
-                  <span className="ml-1 font-normal opacity-80 tabular-nums">
-                    ≤ {formatDKK(item.desiredBuyPrice)}
-                  </span>
-                )}
+                ★
               </span>
             )}
             {item.forSale && (
               <span
-                className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800"
+                className="text-[11px] px-1 py-0.5 rounded bg-emerald-100 shrink-0"
                 title={
                   item.askingPrice != null
                     ? `Til salg for ${formatDKK(item.askingPrice)}`
                     : "Til salg"
                 }
               >
-                ⊕ Til salg
-                {item.askingPrice != null && (
-                  <span className="ml-1 font-normal opacity-80 tabular-nums">
-                    {formatDKK(item.askingPrice)}
-                  </span>
-                )}
+                🏷️
               </span>
             )}
             {item.location && (
               <span
-                className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-700"
-                title="Lokation"
+                className="text-[11px] px-1 py-0.5 rounded bg-neutral-100 shrink-0"
+                title={`Lokation: ${itemLocationLabels[item.location]}`}
               >
-                {itemLocationLabels[item.location]}
+                📍
               </span>
             )}
             {item.marketplaceUrl && (
@@ -458,10 +462,18 @@ function ItemRow({
         )}
         {visibleFields.includes("boughtFor") && (
           <td className="px-4 py-2.5 text-right text-neutral-600 tabular-nums">
-            {item.boughtFor != null ? formatDKK(item.boughtFor) : "—"}
+            {item.boughtFor != null ? formatDKK(itemTotalBought(item)!) : "—"}
+            {qty > 1 && item.boughtFor != null && (
+              <div className="text-[10px] text-neutral-400 tabular-nums">
+                {qty} × {formatDKK(item.boughtFor)}
+              </div>
+            )}
           </td>
         )}
-        <td className="px-4 py-2.5 text-right font-medium text-neutral-900 tabular-nums">
+        <td
+          className="px-4 py-2.5 text-right font-medium text-neutral-900 tabular-nums"
+          title={`Sidst opdateret: ${(item.updatedAt ?? "").slice(0, 10) || "—"}`}
+        >
           {editMode ? (
             <InlineValueInput
               initial={item.currentValue}
@@ -469,7 +481,12 @@ function ItemRow({
             />
           ) : (
             <>
-              {formatDKK(item.currentValue)}
+              {formatDKK(itemTotalValue(item))}
+              {qty > 1 && (
+                <div className="text-[10px] text-neutral-400 tabular-nums">
+                  {qty} × {formatDKK(item.currentValue)}
+                </div>
+              )}
               {isContainer && hasKids && (
                 <div
                   className="text-[10px] text-neutral-400 tabular-nums"
@@ -574,14 +591,28 @@ function InlineValueInput({
     <input
       type="text"
       inputMode="decimal"
+      data-price-input
       value={value}
       onChange={(e) => setValue(e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => {
-        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        const el = e.target as HTMLInputElement;
+        if (e.key === "Enter") {
+          e.preventDefault();
+          // Commit, then jump straight to the next price field for fast updating.
+          const inputs = Array.from(
+            document.querySelectorAll<HTMLInputElement>("[data-price-input]"),
+          );
+          const next = inputs[inputs.indexOf(el) + 1];
+          el.blur();
+          if (next) {
+            next.focus();
+            next.select();
+          }
+        }
         if (e.key === "Escape") {
           setValue(String(initial));
-          (e.target as HTMLInputElement).blur();
+          el.blur();
         }
       }}
       className="w-28 px-2 py-1 text-right tabular-nums text-sm border border-neutral-300 rounded focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-neutral-900"

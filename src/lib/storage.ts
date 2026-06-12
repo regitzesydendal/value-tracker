@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { itemTotalValue } from "./itemCalc";
 import { seedData } from "./seed";
 import { historicalSnapshots } from "./historicalSeed";
 import { TOTAL_CATEGORY_ID } from "./types";
@@ -36,6 +37,9 @@ type ItemRow = {
   serial: string | null;
   version: string | null;
   set: string | null;
+  grade: string | null;
+  purchase_date: string | null;
+  quantity: number | null;
   bought_for: number | null;
   current_value: number;
   notes: string | null;
@@ -71,6 +75,9 @@ function rowToItem(r: ItemRow): Item {
     serial: r.serial ?? undefined,
     version: r.version ?? undefined,
     set: r.set ?? undefined,
+    grade: r.grade ?? undefined,
+    purchaseDate: r.purchase_date ?? undefined,
+    quantity: r.quantity ?? undefined,
     boughtFor: r.bought_for ?? undefined,
     currentValue: r.current_value,
     notes: r.notes ?? undefined,
@@ -147,6 +154,9 @@ export async function upsertItem(userId: string, item: Item): Promise<void> {
     serial: item.serial ?? null,
     version: item.version ?? null,
     set: item.set ?? null,
+    grade: item.grade ?? null,
+    purchase_date: item.purchaseDate ?? null,
+    quantity: item.quantity ?? 1,
     bought_for: item.boughtFor ?? null,
     current_value: item.currentValue,
     notes: item.notes ?? null,
@@ -180,6 +190,9 @@ export async function insertItems(userId: string, items: Item[]): Promise<number
     serial: item.serial ?? null,
     version: item.version ?? null,
     set: item.set ?? null,
+    grade: item.grade ?? null,
+    purchase_date: item.purchaseDate ?? null,
+    quantity: item.quantity ?? 1,
     bought_for: item.boughtFor ?? null,
     current_value: item.currentValue,
     notes: item.notes ?? null,
@@ -244,11 +257,12 @@ export async function takeSnapshot(
   // Children are "inside" their parent — only top-level items count.
   for (const item of data.items) {
     if (item.parentId) continue;
+    const value = itemTotalValue(item);
     totalsByCategory.set(
       item.categoryId,
-      (totalsByCategory.get(item.categoryId) ?? 0) + (item.currentValue || 0),
+      (totalsByCategory.get(item.categoryId) ?? 0) + value,
     );
-    grandTotal += item.currentValue || 0;
+    grandTotal += value;
   }
 
   const rows: Omit<SnapshotRow, "created_at">[] = [];

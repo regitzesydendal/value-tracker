@@ -17,6 +17,7 @@ import {
   TOTAL_CATEGORY_ID,
 } from "../lib/types";
 import { formatDKK } from "../lib/format";
+import { itemTotalValue } from "../lib/itemCalc";
 import { backfillHistoricalSnapshots, deleteSnapshotsForDate } from "../lib/storage";
 import { SnapshotEditModal } from "./SnapshotEditModal";
 
@@ -72,11 +73,12 @@ export function HistoryView({
       // Children belong to their parent — only top-level items count.
       for (const item of data.items) {
         if (item.parentId) continue;
+        const value = itemTotalValue(item);
         totalsByCategory.set(
           item.categoryId,
-          (totalsByCategory.get(item.categoryId) ?? 0) + (item.currentValue || 0),
+          (totalsByCategory.get(item.categoryId) ?? 0) + value,
         );
-        grandTotal += item.currentValue || 0;
+        grandTotal += value;
       }
       for (const cat of data.categories) {
         todayRow[cat.id] = totalsByCategory.get(cat.id) ?? 0;

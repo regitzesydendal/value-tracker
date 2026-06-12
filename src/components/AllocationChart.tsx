@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import type { AppData } from "../lib/types";
 import { formatDKK } from "../lib/format";
+import { itemTotalValue } from "../lib/itemCalc";
 import { resolveCategoryColor } from "../lib/categoryIcons";
 
 // A donut showing how big a share of total value each category makes up.
@@ -12,7 +13,7 @@ export function AllocationChart({ data }: { data: AppData }) {
     const totals = new Map<string, number>();
     for (const it of data.items) {
       if (it.parentId) continue;
-      totals.set(it.categoryId, (totals.get(it.categoryId) ?? 0) + (it.currentValue || 0));
+      totals.set(it.categoryId, (totals.get(it.categoryId) ?? 0) + itemTotalValue(it));
     }
     return data.categories
       .map((c) => ({
