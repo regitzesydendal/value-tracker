@@ -224,7 +224,21 @@ export function ItemTable({
         <thead className="bg-neutral-50 text-neutral-500 text-xs uppercase tracking-wider">
           <tr>
             {showCategory && (
-              <SortableTh label="" col="category" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+              <th className="px-3 py-2.5 w-12">
+                <button
+                  type="button"
+                  onClick={() => toggleSort("category")}
+                  className={`inline-flex items-center gap-0.5 hover:text-neutral-900 ${
+                    sortKey === "category" ? "text-neutral-900" : ""
+                  }`}
+                  title="Sortér efter kategori (logo)"
+                >
+                  <span aria-hidden>↕</span>
+                  <span className="text-[10px] w-2 inline-block">
+                    {sortKey === "category" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  </span>
+                </button>
+              </th>
             )}
             <SortableTh label="Navn" col="name" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
             {visibleFields.includes("serial") && (

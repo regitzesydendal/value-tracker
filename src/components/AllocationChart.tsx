@@ -45,7 +45,8 @@ export function AllocationChart({ data }: { data: AppData }) {
                 nameKey="name"
                 innerRadius={58}
                 outerRadius={92}
-                paddingAngle={2}
+                paddingAngle={1}
+                minAngle={3}
                 stroke="none"
               >
                 {slices.map((s) => (
