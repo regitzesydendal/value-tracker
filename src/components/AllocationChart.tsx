@@ -31,7 +31,7 @@ export function AllocationChart({ data }: { data: AppData }) {
   if (slices.length === 0 || total === 0) return null;
 
   return (
-    <div className="border border-neutral-200 rounded bg-white p-4 mb-4">
+    <div className="border border-neutral-200 rounded bg-white/80 p-4 mb-4">
       <div className="text-xs uppercase tracking-wider text-neutral-500 mb-3">
         Fordeling
       </div>

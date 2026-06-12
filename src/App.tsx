@@ -386,12 +386,14 @@ function TrackerApp({ session }: { session: Session }) {
   }
 
   return (
-    <div className="min-h-screen flex">
-      <div
-        aria-hidden
-        className="fixed inset-0 -z-10 pointer-events-none"
-        style={{ backgroundImage: `url(${themeBg})`, backgroundRepeat: "repeat" }}
-      />
+    <div
+      className="min-h-screen flex"
+      style={{
+        backgroundImage: `url(${themeBg})`,
+        backgroundRepeat: "repeat",
+        backgroundAttachment: "fixed",
+      }}
+    >
       <Sidebar
         categories={data.categories}
         items={data.items}
