@@ -16,35 +16,22 @@ const next = () => ++i;
 
 export const seedData: AppData = {
   categories: [
-    { id: "likvider", name: "Likvider", fields: ["boughtFor"], order: 0 },
-    { id: "pokemon", name: "Pokémonkort", fields: [], order: 1 },
-    { id: "op", name: "One Piece", fields: ["version", "set"], order: 2 },
+    { id: "pokemon", name: "Pokémonkort", fields: [], order: 0 },
+    { id: "op", name: "One Piece", fields: ["version", "set"], order: 1 },
     {
       id: "fodbold",
       name: "Fodboldkort",
       fields: ["serial", "version", "set"],
-      order: 3,
+      order: 2,
     },
     {
       id: "basketball",
       name: "Basketball",
       fields: ["serial", "version", "set"],
-      order: 4,
+      order: 3,
     },
   ],
   items: [
-    // Likvider
-    mk(
-      { categoryId: "likvider", name: "Nordnet", boughtFor: 10000, currentValue: 10000 },
-      next(),
-    ),
-    mk(
-      { categoryId: "likvider", name: "Kontanter", boughtFor: 0, currentValue: 2000 },
-      next(),
-    ),
-    mk({ categoryId: "likvider", name: "Euro", currentValue: 7500 }, next()),
-    mk({ categoryId: "likvider", name: "Kontoen", currentValue: 2500 }, next()),
-
     // Pokemon
     mk({ categoryId: "pokemon", name: "Collectr", currentValue: 119000 }, next()),
     mk({ categoryId: "pokemon", name: "Pokedata", currentValue: 17000 }, next()),

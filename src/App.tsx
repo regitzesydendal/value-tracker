@@ -59,6 +59,10 @@ function TrackerApp({ session }: { session: Session }) {
   const [itemModalOpen, setItemModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [addingChildOf, setAddingChildOf] = useState<Item | null>(null);
+  // When the user clicks "Købt" on a wishlist item we open the item form
+  // pre-filled; this holds the wishlist item so we can remove it once the
+  // collection item is saved.
+  const [convertingWish, setConvertingWish] = useState<WishlistItem | null>(null);
 
   const [catModalOpen, setCatModalOpen] = useState(false);
   const [editingCat, setEditingCat] = useState<Category | null>(null);
@@ -132,6 +136,23 @@ function TrackerApp({ session }: { session: Session }) {
   const categoriesById = useMemo(
     () => new Map(data.categories.map((c) => [c.id, c])),
     [data.categories],
+  );
+
+  // Pre-fill values for the item form when converting a wishlist item into a
+  // real collection item. The wishlist price becomes both the buy price and the
+  // starting current value; the user picks the category and confirms.
+  const wishPrefill = useMemo(
+    () =>
+      convertingWish
+        ? {
+            name: convertingWish.name,
+            currentValue: convertingWish.price,
+            boughtFor: convertingWish.price,
+            quantity: convertingWish.quantity,
+            notes: convertingWish.notes,
+          }
+        : null,
+    [convertingWish],
   );
 
   // Top-level items only — children are rendered inside their parent.
@@ -209,12 +230,22 @@ function TrackerApp({ session }: { session: Session }) {
         ? prev.items.map((i) => (i.id === item.id ? item : i))
         : [...prev.items, item],
     }));
+    // If this save came from marking a wishlist item as "Købt", remember it so
+    // we can remove it from the wishlist once the item is persisted.
+    const wishToClear = !isUpdate ? convertingWish : null;
     setItemModalOpen(false);
     setEditingItem(null);
+    setConvertingWish(null);
     scheduleAutoSnapshot();
 
     try {
       await upsertItem(userId, item);
+      if (wishToClear) {
+        await handleDeleteWishlist(wishToClear.id);
+        // Jump to the list so the newly added item is visible.
+        setSelected(item.categoryId);
+        setView("list");
+      }
     } catch (e) {
       alert(`Kunne ikke gemme: ${e instanceof Error ? e.message : String(e)}`);
       // Reload from server to undo the optimistic change
@@ -378,9 +409,14 @@ function TrackerApp({ session }: { session: Session }) {
     }
   }
 
-  async function handleMarkBought(item: WishlistItem) {
-    if (!confirm(`Marker "${item.name}" som købt og fjern fra ønskelisten?`)) return;
-    await handleDeleteWishlist(item.id);
+  // "Købt": open the item form pre-filled so the user picks a category and
+  // confirms the price. The wishlist entry is removed once the item is saved
+  // (see handleSubmitItem).
+  function handleMarkBought(item: WishlistItem) {
+    setEditingItem(null);
+    setAddingChildOf(null);
+    setConvertingWish(item);
+    setItemModalOpen(true);
   }
 
   async function handleSignOut() {
@@ -606,10 +642,12 @@ function TrackerApp({ session }: { session: Session }) {
         categories={data.categories}
         defaultCategoryId={selected !== "all" ? selected : undefined}
         parent={addingChildOf}
+        prefill={wishPrefill}
         onClose={() => {
           setItemModalOpen(false);
           setEditingItem(null);
           setAddingChildOf(null);
+          setConvertingWish(null);
         }}
         onSubmit={handleSubmitItem}
       />

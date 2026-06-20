@@ -15,17 +15,15 @@ export type SeedSnapshot = {
 
 export const historicalSnapshots: SeedSnapshot[] = [
   // ----- March 2026 (OP was not tracked yet) -----
-  { date: "2026-03-15", categoryId: "likvider", value: 13700 },
   { date: "2026-03-15", categoryId: "pokemon", value: 130975 },
   { date: "2026-03-15", categoryId: "fodbold", value: 24530 },
   { date: "2026-03-15", categoryId: "basketball", value: 379 },
-  { date: "2026-03-15", categoryId: TOTAL_CATEGORY_ID, value: 169584 },
+  { date: "2026-03-15", categoryId: TOTAL_CATEGORY_ID, value: 155884 },
 
   // ----- April 2026 -----
-  { date: "2026-04-15", categoryId: "likvider", value: 14500 },
   { date: "2026-04-15", categoryId: "pokemon", value: 140475 },
   { date: "2026-04-15", categoryId: "op", value: 6100 },
   { date: "2026-04-15", categoryId: "fodbold", value: 28780 },
   { date: "2026-04-15", categoryId: "basketball", value: 379 },
-  { date: "2026-04-15", categoryId: TOTAL_CATEGORY_ID, value: 190234 },
+  { date: "2026-04-15", categoryId: TOTAL_CATEGORY_ID, value: 175734 },
 ];

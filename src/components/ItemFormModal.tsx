@@ -9,6 +9,15 @@ type Props = {
   categories: Category[];
   defaultCategoryId?: string;
   parent?: Item | null; // if set, this is creating/editing a child of `parent`
+  // Pre-fill a NEW item (not an edit) — used when moving a wishlist item into
+  // the collection after marking it "Købt".
+  prefill?: {
+    name?: string;
+    currentValue?: number;
+    boughtFor?: number;
+    quantity?: number;
+    notes?: string;
+  } | null;
   onClose: () => void;
   onSubmit: (
     data: Omit<Item, "id" | "createdAt" | "updatedAt"> & { id?: string },
@@ -21,6 +30,7 @@ export function ItemFormModal({
   categories,
   defaultCategoryId,
   parent,
+  prefill,
   onClose,
   onSubmit,
 }: Props) {
@@ -73,16 +83,18 @@ export function ItemFormModal({
     } else {
       // When adding a child, lock category to the parent's category.
       setCategoryId(parent?.categoryId || defaultCategoryId || categories[0]?.id || "");
-      setName("");
+      setName(prefill?.name ?? "");
       setSerial("");
       setVersion("");
       setSet("");
       setGrade("");
       setPurchaseDate("");
-      setQuantity("1");
-      setBoughtFor("");
-      setCurrentValue("");
-      setNotes("");
+      setQuantity(String(prefill?.quantity ?? 1));
+      setBoughtFor(prefill?.boughtFor != null ? String(prefill.boughtFor) : "");
+      setCurrentValue(
+        prefill?.currentValue != null ? String(prefill.currentValue) : "",
+      );
+      setNotes(prefill?.notes ?? "");
       setIsPending(false);
       setMarketplaceUrl("");
       setIsContainer(false);
@@ -92,7 +104,7 @@ export function ItemFormModal({
       setAskingPrice("");
       setLocation("");
     }
-  }, [open, initial, defaultCategoryId, categories, parent]);
+  }, [open, initial, defaultCategoryId, categories, parent, prefill]);
 
   if (!open) return null;
 
@@ -143,7 +155,9 @@ export function ItemFormModal({
                 ? "Rediger element"
                 : parent
                   ? `Tilføj kort under "${parent.name}"`
-                  : "Tilføj element"}
+                  : prefill
+                    ? "Flyt købt ønske til samlingen"
+                    : "Tilføj element"}
             </h2>
             {isChild && !initial && (
               <p className="text-xs text-neutral-500 mt-1">
