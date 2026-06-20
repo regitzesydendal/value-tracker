@@ -648,6 +648,7 @@ function TrackerApp({ session }: { session: Session }) {
         defaultCategoryId={selected !== "all" ? selected : undefined}
         parent={addingChildOf}
         prefill={wishPrefill}
+        containers={data.items.filter((i) => i.isContainer)}
         onClose={() => {
           setItemModalOpen(false);
           setEditingItem(null);

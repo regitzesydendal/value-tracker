@@ -9,6 +9,9 @@ type Props = {
   categories: Category[];
   defaultCategoryId?: string;
   parent?: Item | null; // if set, this is creating/editing a child of `parent`
+  // Available container items ("Collectr" etc.) an existing item can be moved
+  // into. The item being edited is filtered out so it can't contain itself.
+  containers?: Item[];
   // Pre-fill a NEW item (not an edit) — used when moving a wishlist item into
   // the collection after marking it "Købt".
   prefill?: {
@@ -31,10 +34,13 @@ export function ItemFormModal({
   defaultCategoryId,
   parent,
   prefill,
+  containers,
   onClose,
   onSubmit,
 }: Props) {
   const [categoryId, setCategoryId] = useState("");
+  // "" = top level; otherwise the id of the container this item lives inside.
+  const [parentId, setParentId] = useState("");
   const [name, setName] = useState("");
   const [serial, setSerial] = useState("");
   const [version, setVersion] = useState("");
@@ -58,6 +64,7 @@ export function ItemFormModal({
     if (!open) return;
     if (initial) {
       setCategoryId(initial.categoryId);
+      setParentId(initial.parentId ?? "");
       setName(initial.name);
       setSerial(initial.serial ?? "");
       setVersion(initial.version ?? "");
@@ -83,6 +90,7 @@ export function ItemFormModal({
     } else {
       // When adding a child, lock category to the parent's category.
       setCategoryId(parent?.categoryId || defaultCategoryId || categories[0]?.id || "");
+      setParentId(parent?.id ?? "");
       setName(prefill?.name ?? "");
       setSerial("");
       setVersion("");
@@ -108,15 +116,25 @@ export function ItemFormModal({
 
   if (!open) return null;
 
-  const category = categories.find((c) => c.id === categoryId);
+  // The dedicated "add child" flow (`parent`) wins; otherwise the container the
+  // user picked in the dropdown. A child always inherits its container's category.
+  const chosenParent =
+    parent ?? (parentId ? containers?.find((c) => c.id === parentId) ?? null : null);
+  const isChild = !!chosenParent;
+  const effectiveCategoryId = chosenParent ? chosenParent.categoryId : categoryId;
+
+  const category = categories.find((c) => c.id === effectiveCategoryId);
   const fields = category?.fields ?? [];
+
+  // Containers this item can be moved into (never itself).
+  const moveTargets = (containers ?? []).filter((c) => c.id !== initial?.id);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim() || !categoryId) return;
+    if (!name.trim() || !effectiveCategoryId) return;
     onSubmit({
       id: initial?.id,
-      categoryId,
+      categoryId: effectiveCategoryId,
       name: name.trim(),
       serial: fields.includes("serial") ? serial.trim() || undefined : undefined,
       version: fields.includes("version") ? version.trim() || undefined : undefined,
@@ -138,12 +156,10 @@ export function ItemFormModal({
       forSale: forSale || undefined,
       askingPrice: forSale ? parseAmount(askingPrice) ?? undefined : undefined,
       location: location || undefined,
-      // Preserve parentId when editing; set from parent prop when creating a child
-      parentId: initial?.parentId ?? parent?.id ?? undefined,
+      // Container chosen via the dedicated add-child flow or the dropdown.
+      parentId: chosenParent?.id ?? undefined,
     });
   }
-
-  const isChild = !!parent || !!initial?.parentId;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
@@ -181,6 +197,29 @@ export function ItemFormModal({
                     </option>
                   ))}
                 </select>
+              </Field>
+            )}
+
+            {!parent && !isContainer && moveTargets.length > 0 && (
+              <Field label="Placér under (container)">
+                <select
+                  value={parentId}
+                  onChange={(e) => setParentId(e.target.value)}
+                  className="input"
+                >
+                  <option value="">— Ingen (øverste niveau) —</option>
+                  {moveTargets.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                {parentId && (
+                  <div className="text-xs text-neutral-500 mt-1">
+                    Flyttes ind i “{moveTargets.find((c) => c.id === parentId)?.name}”
+                    og tæller ikke længere selvstændigt i kategori-totalen.
+                  </div>
+                )}
               </Field>
             )}
 
