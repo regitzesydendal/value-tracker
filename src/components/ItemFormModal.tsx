@@ -121,9 +121,10 @@ export function ItemFormModal({
   const chosenParent =
     parent ?? (parentId ? containers?.find((c) => c.id === parentId) ?? null : null);
   const isChild = !!chosenParent;
-  const effectiveCategoryId = chosenParent ? chosenParent.categoryId : categoryId;
 
-  const category = categories.find((c) => c.id === effectiveCategoryId);
+  // An item keeps its OWN category even inside a container, so e.g. One Piece
+  // cards keep the One Piece symbol when they live inside a Pokémon "Collectr".
+  const category = categories.find((c) => c.id === categoryId);
   const fields = category?.fields ?? [];
 
   // Containers this item can be moved into (never itself).
@@ -131,10 +132,10 @@ export function ItemFormModal({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim() || !effectiveCategoryId) return;
+    if (!name.trim() || !categoryId) return;
     onSubmit({
       id: initial?.id,
-      categoryId: effectiveCategoryId,
+      categoryId,
       name: name.trim(),
       serial: fields.includes("serial") ? serial.trim() || undefined : undefined,
       version: fields.includes("version") ? version.trim() || undefined : undefined,
@@ -183,22 +184,20 @@ export function ItemFormModal({
           </div>
 
           <div className="px-6 py-4 space-y-3">
-            {!isChild && (
-              <Field label="Kategori">
-                <select
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  className="input"
-                  required
-                >
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            )}
+            <Field label="Kategori">
+              <select
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                className="input"
+                required
+              >
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
 
             {!parent && !isContainer && moveTargets.length > 0 && (
               <Field label="Placér under (container)">

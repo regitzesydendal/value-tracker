@@ -66,6 +66,27 @@ function PokeballIcon({ size = 18 }: { size?: number }) {
   );
 }
 
+// Container emblem ("Collectr" etc.) — a starry-night "C" matching the page
+// background: deep-blue night disc, a gold sweeping C, a swirl and a star.
+// Containers can hold cards from several categories, so they get their own mark
+// instead of any single category's icon.
+export function ContainerIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="shrink-0"
+    >
+      <circle cx="12" cy="12" r="11" fill="#11264d" stroke="#f5c542" strokeWidth="1.2" />
+      <path d="M5 14 Q9 9 13 12" fill="none" stroke="#5b8cc0" strokeWidth="1" strokeLinecap="round" opacity="0.7" />
+      <path d="M16.6 8 A5.2 5.2 0 1 0 16.6 16" fill="none" stroke="#f5c542" strokeWidth="2.6" strokeLinecap="round" />
+      <path d="M17.6 6.4 l0.5 1.4 1.4 0.5 -1.4 0.5 -0.5 1.4 -0.5 -1.4 -1.4 -0.5 1.4 -0.5 Z" fill="#fff7df" />
+    </svg>
+  );
+}
+
 // Render an icon token (emoji or "pokeball") at a given pixel size.
 export function renderCategoryIcon(
   token: string | undefined,

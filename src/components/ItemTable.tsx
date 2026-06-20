@@ -7,6 +7,7 @@ import {
   resolveCategoryIcon,
   renderCategoryIcon,
   resolveCategoryColor,
+  ContainerIcon,
 } from "../lib/categoryIcons";
 import { useHideValues, MONEY_MASK } from "../lib/hideValues";
 
@@ -355,6 +356,10 @@ function ItemRow({
   const cat = categoriesById.get(item.categoryId);
   const catIconNode = cat ? renderCategoryIcon(resolveCategoryIcon(cat), 16) : null;
   const catColor = cat ? resolveCategoryColor(cat) : undefined;
+  // Containers get their own "C" emblem + gold accent; everything else keeps its
+  // own category icon/colour (children included).
+  const iconNode = isContainer ? <ContainerIcon size={16} /> : catIconNode;
+  const accentColor = isContainer ? "#f5c542" : catColor;
   const gain = itemGain(item);
 
   return (
@@ -367,14 +372,14 @@ function ItemRow({
         {showCategory && (
           <td
             className="px-3 py-2.5 text-center"
-            style={{ borderLeft: catColor ? `4px solid ${catColor}` : undefined }}
-            title={cat?.name ?? ""}
+            style={{ borderLeft: accentColor ? `4px solid ${accentColor}` : undefined }}
+            title={isContainer ? "Container" : cat?.name ?? ""}
           >
-            {catIconNode ??
-              (catColor ? (
+            {iconNode ??
+              (accentColor ? (
                 <span
                   className="inline-block w-2.5 h-2.5 rounded-full"
-                  style={{ backgroundColor: catColor }}
+                  style={{ backgroundColor: accentColor }}
                 />
               ) : null)}
           </td>
@@ -382,11 +387,11 @@ function ItemRow({
         <td
           className="px-4 py-2.5 font-medium text-neutral-900"
           style={{
-            paddingLeft: 16 + depth * 24,
+            paddingLeft: 16 + depth * 28,
             borderLeft: showCategory
               ? undefined
-              : catColor
-                ? `4px solid ${catColor}`
+              : accentColor
+                ? `4px solid ${accentColor}`
                 : undefined,
           }}
         >
@@ -401,8 +406,16 @@ function ItemRow({
               </button>
             )}
             {!isContainer && depth === 0 && <span className="w-4" />}
-            {!showCategory && catIconNode && (
-              <span className="shrink-0">{catIconNode}</span>
+            {depth > 0 && (
+              <span
+                className="text-neutral-400 shrink-0 -ml-1 mr-0.5"
+                title="Ligger inde i en container"
+              >
+                ↳
+              </span>
+            )}
+            {!showCategory && iconNode && (
+              <span className="shrink-0">{iconNode}</span>
             )}
             {editMode ? (
               <CellInput
