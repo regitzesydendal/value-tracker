@@ -457,9 +457,10 @@ function TrackerApp({ session }: { session: Session }) {
     <div
       className="min-h-screen flex"
       style={{
-        backgroundImage: `url("${themeBgUrl}")`,
-        backgroundRepeat: "repeat",
-        backgroundAttachment: "fixed",
+        backgroundImage: `url("${themeBgUrl}"), radial-gradient(circle at 28% 18%, #ffffff 0%, #f4f1ea 55%, #ece7dc 100%)`,
+        backgroundRepeat: "repeat, no-repeat",
+        backgroundAttachment: "fixed, fixed",
+        backgroundSize: "auto, cover",
       }}
     >
       <Sidebar
