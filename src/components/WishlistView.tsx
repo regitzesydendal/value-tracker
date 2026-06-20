@@ -69,8 +69,8 @@ export function WishlistView({ items, onAdd, onEdit, onDelete, onMarkBought }: P
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <div>
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="border border-neutral-200 rounded bg-white p-4">
           <div className="text-xs uppercase tracking-wider text-neutral-500">
             Forventet i alt
           </div>
@@ -87,13 +87,13 @@ export function WishlistView({ items, onAdd, onEdit, onDelete, onMarkBought }: P
       </div>
 
       {sorted.length === 0 ? (
-        <div className="text-center text-sm text-neutral-500 border border-dashed border-neutral-200 rounded-lg py-16">
+        <div className="text-center text-sm text-neutral-500 border border-dashed border-neutral-200 rounded-lg py-16 bg-white">
           Din ønskeliste er tom.
           <br />
           Klik på <span className="font-medium">“+ Tilføj til ønskeliste”</span> for at tilføje noget, du gerne vil købe.
         </div>
       ) : (
-        <div className="overflow-x-auto border border-neutral-200 rounded-lg">
+        <div className="overflow-x-auto border border-neutral-200 rounded-lg bg-white">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-neutral-200 bg-neutral-50 text-left text-xs uppercase tracking-wider text-neutral-500">
