@@ -4,11 +4,13 @@ import type { AppData } from "../lib/types";
 import { formatDKK } from "../lib/format";
 import { itemTotalValue } from "../lib/itemCalc";
 import { resolveCategoryColor } from "../lib/categoryIcons";
+import { useHideValues } from "../lib/hideValues";
 
 // A donut showing how big a share of total value each category makes up.
 // Children belong to their parent, so only top-level items are counted —
 // matching the totals shown in the sidebar.
 export function AllocationChart({ data }: { data: AppData }) {
+  const { mask } = useHideValues();
   const slices = useMemo(() => {
     const totals = new Map<string, number>();
     for (const it of data.items) {
@@ -54,7 +56,7 @@ export function AllocationChart({ data }: { data: AppData }) {
                 ))}
               </Pie>
               <Tooltip
-                formatter={(value) => formatDKK(Number(value))}
+                formatter={(value) => mask(formatDKK(Number(value)))}
                 contentStyle={{
                   fontSize: 12,
                   borderRadius: 6,
@@ -75,7 +77,7 @@ export function AllocationChart({ data }: { data: AppData }) {
                   style={{ backgroundColor: s.color }}
                 />
                 <span className="truncate flex-1 text-neutral-700">{s.name}</span>
-                <span className="tabular-nums text-neutral-500">{formatDKK(s.value)}</span>
+                <span className="tabular-nums text-neutral-500">{mask(formatDKK(s.value))}</span>
                 <span className="tabular-nums font-medium text-neutral-900 w-12 text-right">
                   {pct.toFixed(0)}%
                 </span>

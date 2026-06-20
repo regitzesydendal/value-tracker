@@ -6,6 +6,7 @@ import {
   renderCategoryIcon,
   resolveCategoryColor,
 } from "../lib/categoryIcons";
+import { useHideValues } from "../lib/hideValues";
 
 type Props = {
   categories: Category[];
@@ -28,6 +29,7 @@ export function Sidebar({
   wishlistCount,
   onSelectWishlist,
 }: Props) {
+  const { mask } = useHideValues();
   // Children are "inside" a parent — only count top-level items in the totals
   // so we don't double-count.
   const topLevelItems = items.filter((i) => !i.parentId);
@@ -49,7 +51,7 @@ export function Sidebar({
           I alt
         </div>
         <div className="text-2xl font-semibold mt-1 tabular-nums">
-          {formatDKK(grandTotal)}
+          {mask(formatDKK(grandTotal))}
         </div>
       </div>
 
@@ -108,7 +110,7 @@ export function Sidebar({
                   active ? "opacity-80" : "text-neutral-500"
                 }`}
               >
-                {formatDKK(total)}
+                {mask(formatDKK(total))}
               </div>
             </button>
           );

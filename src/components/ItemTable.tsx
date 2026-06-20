@@ -8,6 +8,7 @@ import {
   renderCategoryIcon,
   resolveCategoryColor,
 } from "../lib/categoryIcons";
+import { useHideValues, MONEY_MASK } from "../lib/hideValues";
 
 const fieldLabels: Record<FieldKey, string> = {
   serial: "N.",
@@ -58,7 +59,10 @@ function itemGain(item: Item): { gain: number; pct: number | null } | null {
 }
 
 function GainText({ gain, pct }: { gain: number; pct: number | null }) {
+  const { hidden } = useHideValues();
   const up = gain >= 0;
+  // When hidden, neutralise both the amount and the up/down colour.
+  if (hidden) return <span className="text-neutral-400">{MONEY_MASK}</span>;
   return (
     <span className={up ? "text-green-600" : "text-red-600"}>
       {up ? "+" : "−"}
@@ -153,6 +157,7 @@ export function ItemTable({
   onPatch,
   onAddChild,
 }: Props) {
+  const { mask } = useHideValues();
   const showCategory = category === null;
   const visibleFields: FieldKey[] = category
     ? category.fields
@@ -289,7 +294,7 @@ export function ItemTable({
               I alt
             </td>
             <td className="px-4 py-2.5 text-right font-semibold tabular-nums">
-              {formatDKK(total)}
+              {mask(formatDKK(total))}
             </td>
             {showGain && (
               <td className="px-4 py-2.5 text-right font-semibold tabular-nums">
@@ -339,6 +344,7 @@ function ItemRow({
   onPatch,
   onAddChild,
 }: RowProps) {
+  const { hidden, mask } = useHideValues();
   const [expanded, setExpanded] = useState(false);
   const rawKids = childrenByParent.get(item.id) ?? [];
   const kids = comparator ? [...rawKids].sort(comparator) : rawKids;
@@ -533,8 +539,8 @@ function ItemRow({
               />
             ) : (
               <>
-                {item.boughtFor != null ? formatDKK(itemTotalBought(item)!) : "—"}
-                {qty > 1 && item.boughtFor != null && (
+                {item.boughtFor != null ? mask(formatDKK(itemTotalBought(item)!)) : "—"}
+                {!hidden && qty > 1 && item.boughtFor != null && (
                   <div className="text-[10px] text-neutral-400 tabular-nums">
                     {qty} × {formatDKK(item.boughtFor)}
                   </div>
@@ -556,13 +562,13 @@ function ItemRow({
             />
           ) : (
             <>
-              {formatDKK(itemTotalValue(item))}
-              {qty > 1 && (
+              {mask(formatDKK(itemTotalValue(item)))}
+              {!hidden && qty > 1 && (
                 <div className="text-[10px] text-neutral-400 tabular-nums">
                   {qty} × {formatDKK(item.currentValue)}
                 </div>
               )}
-              {isContainer && hasKids && (
+              {!hidden && isContainer && hasKids && (
                 <div
                   className="text-[10px] text-neutral-400 tabular-nums"
                   title="Sum af kort indeni"

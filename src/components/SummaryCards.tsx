@@ -1,14 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { AppData, Snapshot } from "../lib/types";
 import { TOTAL_CATEGORY_ID } from "../lib/types";
 import { formatDKK } from "../lib/format";
 import { itemTotalValue, itemTotalBought } from "../lib/itemCalc";
-
-// Persisted across reloads so the user's "skjul beløb" choice sticks.
-const HIDE_KEY = "vt:hideValues";
-
-// A playful star mask shown instead of the real number when values are hidden.
-const MASK = "✦ ✦ ✦ ✦";
+import { useHideValues, EyeIcon, EyeOffIcon } from "../lib/hideValues";
 
 // Headline numbers shown above the "Alle" list: total value, total profit/loss,
 // and the change since the most recent saved snapshot.
@@ -19,25 +14,7 @@ export function SummaryCards({
   data: AppData;
   snapshots: Snapshot[];
 }) {
-  const [hidden, setHidden] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem(HIDE_KEY) === "1";
-    } catch {
-      return false;
-    }
-  });
-
-  function toggleHidden() {
-    setHidden((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem(HIDE_KEY, next ? "1" : "0");
-      } catch {
-        /* ignore storage errors (e.g. private mode) */
-      }
-      return next;
-    });
-  }
+  const { hidden, toggle, mask } = useHideValues();
 
   const stats = useMemo(() => {
     let value = 0;
@@ -77,47 +54,48 @@ export function SummaryCards({
   const tone = (n: number) => (n >= 0 ? "up" : "down");
 
   return (
-    <div className="mb-4">
-      <div className="flex items-center justify-end mb-2">
-        <button
-          onClick={toggleHidden}
-          className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded border border-neutral-200 bg-white/70 text-neutral-600 hover:bg-white hover:text-neutral-900"
-          title={hidden ? "Vis beløb" : "Skjul beløb (anonymisér)"}
-        >
-          {hidden ? <EyeOffIcon /> : <EyeIcon />}
-          <span>{hidden ? "Vis beløb" : "Skjul beløb"}</span>
-        </button>
-      </div>
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+      <Card
+        label="Samlet værdi"
+        value={mask(formatDKK(stats.value))}
+        hidden={hidden}
+        action={
+          <button
+            onClick={toggle}
+            className="flex items-center gap-1.5 text-xs px-2 py-1 rounded-full border border-neutral-200 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+            title={hidden ? "Vis beløb" : "Skjul beløb (anonymisér hele siden)"}
+          >
+            {hidden ? <EyeOffIcon /> : <EyeIcon />}
+            <span>{hidden ? "Vis" : "Skjul"}</span>
+          </button>
+        }
+      />
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Card label="Samlet værdi" value={formatDKK(stats.value)} hidden={hidden} />
+      <Card
+        label="Samlet gevinst"
+        value={stats.hasBought ? mask(signed(stats.gain)) : "—"}
+        tone={stats.hasBought ? tone(stats.gain) : "neutral"}
+        hidden={hidden}
+        sub={
+          stats.hasBought && stats.gainPct != null
+            ? `${stats.gain >= 0 ? "+" : "−"}${Math.abs(stats.gainPct).toFixed(0)}%`
+            : undefined
+        }
+      />
 
-        <Card
-          label="Samlet gevinst"
-          value={stats.hasBought ? signed(stats.gain) : "—"}
-          tone={stats.hasBought ? tone(stats.gain) : "neutral"}
-          hidden={hidden}
-          sub={
-            stats.hasBought && stats.gainPct != null
-              ? `${stats.gain >= 0 ? "+" : "−"}${Math.abs(stats.gainPct).toFixed(0)}%`
-              : undefined
-          }
-        />
-
-        <Card
-          label="Ændring siden sidst"
-          value={stats.change != null ? signed(stats.change) : "—"}
-          tone={stats.change != null ? tone(stats.change) : "neutral"}
-          hidden={hidden}
-          sub={
-            stats.lastDate
-              ? stats.changePct != null
-                ? `${stats.change! >= 0 ? "+" : "−"}${Math.abs(stats.changePct).toFixed(0)}% siden ${stats.lastDate}`
-                : `siden ${stats.lastDate}`
-              : "intet tidligere snapshot"
-          }
-        />
-      </div>
+      <Card
+        label="Ændring siden sidst"
+        value={stats.change != null ? mask(signed(stats.change)) : "—"}
+        tone={stats.change != null ? tone(stats.change) : "neutral"}
+        hidden={hidden}
+        sub={
+          stats.lastDate
+            ? stats.changePct != null
+              ? `${stats.change! >= 0 ? "+" : "−"}${Math.abs(stats.changePct).toFixed(0)}% siden ${stats.lastDate}`
+              : `siden ${stats.lastDate}`
+            : "intet tidligere snapshot"
+        }
+      />
     </div>
   );
 }
@@ -128,12 +106,14 @@ function Card({
   sub,
   tone = "neutral",
   hidden = false,
+  action,
 }: {
   label: string;
   value: string;
   sub?: string;
   tone?: "up" | "down" | "neutral";
   hidden?: boolean;
+  action?: React.ReactNode;
 }) {
   // When hidden, neutralise the colour too so up/down (gain/loss) isn't leaked.
   const color = hidden
@@ -145,30 +125,12 @@ function Card({
         : "text-neutral-900";
   return (
     <div className="border border-neutral-200 rounded bg-white p-4">
-      <div className="text-xs uppercase tracking-wider text-neutral-500">{label}</div>
-      <div className={`text-2xl font-semibold mt-1 tabular-nums ${color}`}>
-        {hidden ? MASK : value}
+      <div className="flex items-start justify-between gap-2">
+        <div className="text-xs uppercase tracking-wider text-neutral-500">{label}</div>
+        {action}
       </div>
+      <div className={`text-2xl font-semibold mt-1 tabular-nums ${color}`}>{value}</div>
       {sub && !hidden && <div className={`text-xs mt-0.5 tabular-nums ${color}`}>{sub}</div>}
     </div>
-  );
-}
-
-function EyeIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
-function EyeOffIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-      <path d="M6.61 6.61A18.45 18.45 0 0 0 1 12s4 8 11 8a9.12 9.12 0 0 0 5.39-1.61" />
-      <line x1="2" y1="2" x2="22" y2="22" />
-    </svg>
   );
 }

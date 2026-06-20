@@ -14,6 +14,7 @@ import { AllocationChart } from "./components/AllocationChart";
 import { SummaryCards } from "./components/SummaryCards";
 import { CategoryIcon } from "./lib/categoryIcons";
 import { themeBgUrl } from "./lib/themeBackground";
+import { HideValuesProvider } from "./lib/hideValues";
 import {
   loadData,
   loadSnapshots,
@@ -454,6 +455,7 @@ function TrackerApp({ session }: { session: Session }) {
   }
 
   return (
+    <HideValuesProvider>
     <div
       className="min-h-screen flex"
       style={{
@@ -686,5 +688,6 @@ function TrackerApp({ session }: { session: Session }) {
         onSubmit={handleSubmitWishlist}
       />
     </div>
+    </HideValuesProvider>
   );
 }
