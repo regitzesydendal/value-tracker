@@ -148,8 +148,14 @@ function ItemDetail({
             )}
           </div>
           <button
+            onClick={() => onEdit(item)}
+            className="text-sm px-3 py-1.5 rounded bg-neutral-900 text-white hover:bg-neutral-800 shrink-0"
+          >
+            ✎ Rediger
+          </button>
+          <button
             onClick={onClose}
-            className="text-neutral-400 hover:text-neutral-900 text-lg leading-none px-1"
+            className="text-neutral-400 hover:text-neutral-900 text-lg leading-none px-1 py-1.5"
             title="Luk"
           >
             ✕
