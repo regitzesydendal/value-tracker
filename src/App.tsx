@@ -3,7 +3,6 @@ import type { Session } from "@supabase/supabase-js";
 import { Sidebar } from "./components/Sidebar";
 import { ItemTable } from "./components/ItemTable";
 import { ItemFormModal } from "./components/ItemFormModal";
-import { ItemDetailModal } from "./components/ItemDetailModal";
 import { CategoryFormModal } from "./components/CategoryFormModal";
 import { AuthGate } from "./components/AuthGate";
 import { SnapshotButton } from "./components/SnapshotButton";
@@ -71,8 +70,6 @@ function TrackerApp({ session }: { session: Session }) {
   const [editingCat, setEditingCat] = useState<Category | null>(null);
 
   const [editMode, setEditMode] = useState(false);
-  // Item shown in the detail view (price chart + "today's price").
-  const [viewingItemId, setViewingItemId] = useState<string | null>(null);
   const [csvOpen, setCsvOpen] = useState(false);
 
   async function refreshSnapshots() {
@@ -638,7 +635,6 @@ function TrackerApp({ session }: { session: Session }) {
               categoriesById={categoriesById}
               editMode={editMode}
               grouped={selected === "all"}
-              onOpen={(item) => setViewingItemId(item.id)}
               onEdit={handleEditItem}
               onDelete={handleDeleteItem}
               onPatch={handlePatchItem}
@@ -663,28 +659,6 @@ function TrackerApp({ session }: { session: Session }) {
           )}
         </div>
       </main>
-
-      <ItemDetailModal
-        item={viewingItemId ? data.items.find((i) => i.id === viewingItemId) ?? null : null}
-        category={
-          viewingItemId
-            ? categoriesById.get(data.items.find((i) => i.id === viewingItemId)?.categoryId ?? "")
-            : undefined
-        }
-        onClose={() => setViewingItemId(null)}
-        onEdit={(item) => {
-          setViewingItemId(null);
-          handleEditItem(item);
-        }}
-        onUpdatePrice={async (item, price) => {
-          if (price !== item.currentValue) {
-            await handlePatchItem(item, { currentValue: price });
-          } else {
-            // Same price as before — still log it so the chart shows it was checked today.
-            await logPrice(item.id, price);
-          }
-        }}
-      />
 
       <ItemFormModal
         open={itemModalOpen}

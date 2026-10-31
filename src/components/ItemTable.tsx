@@ -142,7 +142,6 @@ type Props = {
   categoriesById: Map<string, Category>;
   editMode: boolean;
   grouped?: boolean;          // "Alle" view: fold items into one group per category
-  onOpen: (item: Item) => void;
   onEdit: (item: Item) => void;
   onDelete: (id: string) => void;
   onPatch: (item: Item, patch: Partial<Item>) => void;
@@ -166,7 +165,6 @@ export function ItemTable({
   categoriesById,
   editMode,
   grouped = false,
-  onOpen,
   onEdit,
   onDelete,
   onPatch,
@@ -272,7 +270,6 @@ export function ItemTable({
       visibleFields={visibleFields}
       categoriesById={categoriesById}
       editMode={editMode}
-      onOpen={onOpen}
       onEdit={onEdit}
       onDelete={onDelete}
       onPatch={onPatch}
@@ -402,7 +399,6 @@ type RowProps = {
   visibleFields: FieldKey[];
   categoriesById: Map<string, Category>;
   editMode: boolean;
-  onOpen: (item: Item) => void;
   onEdit: (item: Item) => void;
   onDelete: (id: string) => void;
   onPatch: (item: Item, patch: Partial<Item>) => void;
@@ -419,7 +415,6 @@ function ItemRow({
   visibleFields,
   categoriesById,
   editMode,
-  onOpen,
   onEdit,
   onDelete,
   onPatch,
@@ -445,11 +440,11 @@ function ItemRow({
   return (
     <>
       <tr
-        onClick={editMode ? undefined : () => onOpen(item)}
+        onClick={editMode ? undefined : () => onEdit(item)}
         className={`border-t border-neutral-100 hover:bg-neutral-50 group ${
           depth > 0 ? "bg-neutral-50/40" : ""
         } ${editMode ? "" : "cursor-pointer"}`}
-        title={editMode ? undefined : "Klik for detaljer og prisgraf"}
+        title={editMode ? undefined : "Klik for at redigere og se prisgraf"}
       >
         {showCategory && (
           <td
@@ -734,7 +729,6 @@ function ItemRow({
             visibleFields={visibleFields}
             categoriesById={categoriesById}
             editMode={editMode}
-            onOpen={onOpen}
             onEdit={onEdit}
             onDelete={onDelete}
             onPatch={onPatch}

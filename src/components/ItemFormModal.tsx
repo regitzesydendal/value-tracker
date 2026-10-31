@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Category, Item, ItemLocation } from "../lib/types";
 import { itemLocationLabels, itemLocationOrder } from "../lib/types";
 import { parseAmount } from "../lib/format";
+import { PriceChart } from "./PriceChart";
 
 type Props = {
   open: boolean;
@@ -114,6 +115,14 @@ export function ItemFormModal({
     }
   }, [open, initial, defaultCategoryId, categories, parent, prefill]);
 
+  // Esc closes the window (like clicking Annuller).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   // The dedicated "add child" flow (`parent`) wins; otherwise the container the
@@ -163,7 +172,12 @@ export function ItemFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      // Clicking the dark backdrop closes the window. Checked on mousedown so
+      // dragging a text selection out of the box doesn't close it by accident.
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <div className="px-6 py-4 border-b border-neutral-200">
@@ -182,6 +196,12 @@ export function ItemFormModal({
               </p>
             )}
           </div>
+
+          {initial && (
+            <div className="px-6 pt-4">
+              <PriceChart item={initial} />
+            </div>
+          )}
 
           <div className="px-6 py-4 space-y-3">
             <Field label="Kategori">
@@ -287,6 +307,16 @@ export function ItemFormModal({
                 placeholder="0"
                 required
               />
+              {initial && marketplaceUrl.trim() && (
+                <a
+                  href={marketplaceUrl.trim()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block text-xs text-blue-600 hover:underline mt-1"
+                >
+                  Tjek dagens pris ↗
+                </a>
+              )}
               {(() => {
                 const q = parseInt(quantity, 10);
                 const v = parseAmount(currentValue);
