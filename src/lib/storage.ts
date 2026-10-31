@@ -8,6 +8,7 @@ import type {
   Category,
   Item,
   ItemLocation,
+  PricePoint,
   Snapshot,
   WishlistItem,
   WishlistPriority,
@@ -367,6 +368,43 @@ export async function backfillHistoricalSnapshots(userId: string): Promise<numbe
     .upsert(rows, { onConflict: "user_id,date,category_id" });
   if (error) throw error;
   return rows.length;
+}
+
+// ---------- Item price history ----------
+
+type PriceRow = {
+  item_id: string;
+  date: string;
+  price: number;
+};
+
+export async function loadItemPrices(itemId: string): Promise<PricePoint[]> {
+  const { data, error } = await supabase
+    .from("item_prices")
+    .select("item_id,date,price")
+    .eq("item_id", itemId)
+    .order("date", { ascending: true });
+  if (error) throw error;
+  return (data as PriceRow[]).map((r) => ({
+    itemId: r.item_id,
+    date: r.date,
+    price: Number(r.price),
+  }));
+}
+
+// Record an item's per-unit price for a day. One row per item per day, so
+// updating twice on the same day just overwrites.
+export async function recordItemPrice(
+  userId: string,
+  itemId: string,
+  date: string,
+  price: number,
+): Promise<void> {
+  const { error } = await supabase.from("item_prices").upsert(
+    { id: `${itemId}:${date}`, user_id: userId, item_id: itemId, date, price },
+    { onConflict: "item_id,date" },
+  );
+  if (error) throw error;
 }
 
 // ---------- Wishlist ("Ønskeliste") ----------

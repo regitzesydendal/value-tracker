@@ -98,3 +98,10 @@ export type WishlistItem = {
 };
 
 export const TOTAL_CATEGORY_ID = "__total__";
+
+// One recorded per-unit price for an item on a given day (price history).
+export type PricePoint = {
+  itemId: string;
+  date: string;   // ISO date (YYYY-MM-DD)
+  price: number;  // per-unit price (kr.)
+};

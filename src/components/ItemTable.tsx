@@ -141,11 +141,23 @@ type Props = {
   category: Category | null; // null = "Alle"
   categoriesById: Map<string, Category>;
   editMode: boolean;
+  grouped?: boolean;          // "Alle" view: fold items into one group per category
+  onOpen: (item: Item) => void;
   onEdit: (item: Item) => void;
   onDelete: (id: string) => void;
   onPatch: (item: Item, patch: Partial<Item>) => void;
   onAddChild: (parent: Item) => void;
 };
+
+// Which category groups are unfolded — remembered between visits.
+const OPEN_GROUPS_KEY = "vt.openGroups";
+function loadOpenGroups(): Set<string> {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(OPEN_GROUPS_KEY) ?? "[]"));
+  } catch {
+    return new Set();
+  }
+}
 
 export function ItemTable({
   items,
@@ -153,6 +165,8 @@ export function ItemTable({
   category,
   categoriesById,
   editMode,
+  grouped = false,
+  onOpen,
   onEdit,
   onDelete,
   onPatch,
@@ -205,6 +219,35 @@ export function ItemTable({
     [items, comparator],
   );
 
+  const [openGroups, setOpenGroups] = useState<Set<string>>(loadOpenGroups);
+  function toggleGroup(catId: string) {
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(catId)) next.delete(catId);
+      else next.add(catId);
+      try {
+        localStorage.setItem(OPEN_GROUPS_KEY, JSON.stringify([...next]));
+      } catch {
+        // storage unavailable — just don't remember it
+      }
+      return next;
+    });
+  }
+
+  // One group per category (in sidebar order), each holding its sorted items.
+  const groups = useMemo(() => {
+    if (!grouped) return null;
+    const byCat = new Map<string, Item[]>();
+    for (const it of sortedItems) {
+      const arr = byCat.get(it.categoryId) ?? [];
+      arr.push(it);
+      byCat.set(it.categoryId, arr);
+    }
+    return [...byCat.entries()]
+      .map(([catId, groupItems]) => ({ cat: categoriesById.get(catId), catId, groupItems }))
+      .sort((a, b) => (a.cat?.order ?? 0) - (b.cat?.order ?? 0));
+  }, [grouped, sortedItems, categoriesById]);
+
   const total = items.reduce((s, i) => s + itemTotalValue(i), 0);
   const totalBought = items.reduce((s, i) => s + (itemTotalBought(i) ?? 0), 0);
   const totalGain = items.reduce((s, i) => {
@@ -215,6 +258,27 @@ export function ItemTable({
   // Footer: label spans everything up to (and including) the last field column;
   // then come the current-value, optional gain, and actions cells.
   const footerLabelSpan = 1 + (showCategory ? 1 : 0) + visibleFields.length;
+  const columnCount = footerLabelSpan + 1 + (showGain ? 1 : 0) + 1;
+
+  const renderRow = (item: Item) => (
+    <ItemRow
+      key={item.id}
+      item={item}
+      depth={0}
+      childrenByParent={childrenByParent}
+      comparator={comparator}
+      showCategory={showCategory}
+      showGain={showGain}
+      visibleFields={visibleFields}
+      categoriesById={categoriesById}
+      editMode={editMode}
+      onOpen={onOpen}
+      onEdit={onEdit}
+      onDelete={onDelete}
+      onPatch={onPatch}
+      onAddChild={onAddChild}
+    />
+  );
 
   if (items.length === 0) {
     return (
@@ -266,26 +330,40 @@ export function ItemTable({
             <th className="w-28"></th>
           </tr>
         </thead>
-        <tbody>
-          {sortedItems.map((item) => (
-            <ItemRow
-              key={item.id}
-              item={item}
-              depth={0}
-              childrenByParent={childrenByParent}
-              comparator={comparator}
-              showCategory={showCategory}
-              showGain={showGain}
-              visibleFields={visibleFields}
-              categoriesById={categoriesById}
-              editMode={editMode}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onPatch={onPatch}
-              onAddChild={onAddChild}
-            />
-          ))}
-        </tbody>
+        {groups ? (
+          groups.map(({ cat, catId, groupItems }) => {
+            const open = openGroups.has(catId);
+            const groupTotal = groupItems.reduce((s, i) => s + itemTotalValue(i), 0);
+            const color = cat ? resolveCategoryColor(cat) : undefined;
+            return (
+              <tbody key={catId}>
+                <tr
+                  onClick={() => toggleGroup(catId)}
+                  className="border-t border-neutral-200 bg-neutral-50 hover:bg-neutral-100 cursor-pointer select-none"
+                >
+                  <td
+                    colSpan={columnCount}
+                    className="px-4 py-2.5"
+                    style={{ borderLeft: color ? `4px solid ${color}` : undefined }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-neutral-400 text-xs w-4">{open ? "▼" : "▶"}</span>
+                      {cat && renderCategoryIcon(resolveCategoryIcon(cat), 18)}
+                      <span className="font-semibold text-neutral-900">{cat?.name ?? "Uden kategori"}</span>
+                      <span className="text-xs text-neutral-500">{groupItems.length}</span>
+                      <span className="ml-auto font-semibold tabular-nums">
+                        {mask(formatDKK(groupTotal))}
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+                {open && groupItems.map(renderRow)}
+              </tbody>
+            );
+          })
+        ) : (
+          <tbody>{sortedItems.map(renderRow)}</tbody>
+        )}
         <tfoot className="bg-neutral-50 border-t border-neutral-200">
           <tr>
             <td
@@ -324,6 +402,7 @@ type RowProps = {
   visibleFields: FieldKey[];
   categoriesById: Map<string, Category>;
   editMode: boolean;
+  onOpen: (item: Item) => void;
   onEdit: (item: Item) => void;
   onDelete: (id: string) => void;
   onPatch: (item: Item, patch: Partial<Item>) => void;
@@ -340,6 +419,7 @@ function ItemRow({
   visibleFields,
   categoriesById,
   editMode,
+  onOpen,
   onEdit,
   onDelete,
   onPatch,
@@ -365,9 +445,11 @@ function ItemRow({
   return (
     <>
       <tr
+        onClick={editMode ? undefined : () => onOpen(item)}
         className={`border-t border-neutral-100 hover:bg-neutral-50 group ${
           depth > 0 ? "bg-neutral-50/40" : ""
-        }`}
+        } ${editMode ? "" : "cursor-pointer"}`}
+        title={editMode ? undefined : "Klik for detaljer og prisgraf"}
       >
         {showCategory && (
           <td
@@ -398,7 +480,10 @@ function ItemRow({
           <span className="flex items-center gap-2 min-w-0">
             {isContainer && (
               <button
-                onClick={() => setExpanded((v) => !v)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setExpanded((v) => !v);
+                }}
                 className="text-neutral-400 hover:text-neutral-700 text-xs w-4"
                 title={expanded ? "Skjul kort" : "Vis kort"}
               >
@@ -601,7 +686,7 @@ function ItemRow({
             )}
           </td>
         )}
-        <td className="px-2 py-2.5 text-right">
+        <td className="px-2 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
           <div
             className={`flex gap-1 justify-end transition-opacity ${
               editMode ? "opacity-100" : "opacity-0 group-hover:opacity-100"
@@ -649,6 +734,7 @@ function ItemRow({
             visibleFields={visibleFields}
             categoriesById={categoriesById}
             editMode={editMode}
+            onOpen={onOpen}
             onEdit={onEdit}
             onDelete={onDelete}
             onPatch={onPatch}

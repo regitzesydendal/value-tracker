@@ -3,6 +3,7 @@ import type { Session } from "@supabase/supabase-js";
 import { Sidebar } from "./components/Sidebar";
 import { ItemTable } from "./components/ItemTable";
 import { ItemFormModal } from "./components/ItemFormModal";
+import { ItemDetailModal } from "./components/ItemDetailModal";
 import { CategoryFormModal } from "./components/CategoryFormModal";
 import { AuthGate } from "./components/AuthGate";
 import { SnapshotButton } from "./components/SnapshotButton";
@@ -23,6 +24,7 @@ import {
   upsertItem,
   deleteItem as dbDeleteItem,
   takeSnapshot,
+  recordItemPrice,
   loadWishlist,
   upsertWishlistItem,
   deleteWishlistItem as dbDeleteWishlistItem,
@@ -69,6 +71,8 @@ function TrackerApp({ session }: { session: Session }) {
   const [editingCat, setEditingCat] = useState<Category | null>(null);
 
   const [editMode, setEditMode] = useState(false);
+  // Item shown in the detail view (price chart + "today's price").
+  const [viewingItemId, setViewingItemId] = useState<string | null>(null);
   const [csvOpen, setCsvOpen] = useState(false);
 
   async function refreshSnapshots() {
@@ -107,6 +111,16 @@ function TrackerApp({ session }: { session: Session }) {
       if (autoSnapTimer.current) window.clearTimeout(autoSnapTimer.current);
     };
   }, []);
+
+  // Log an item's per-unit price for today in its price history. Non-fatal:
+  // fails quietly if the item_prices migration hasn't been run yet.
+  async function logPrice(itemId: string, price: number) {
+    try {
+      await recordItemPrice(userId, itemId, new Date().toISOString().slice(0, 10), price);
+    } catch (e) {
+      console.warn("recordItemPrice failed:", e);
+    }
+  }
 
   // Initial load: fetch items + categories + snapshots for this user.
   useEffect(() => {
@@ -241,6 +255,10 @@ function TrackerApp({ session }: { session: Session }) {
 
     try {
       await upsertItem(userId, item);
+      const prev = isUpdate ? data.items.find((i) => i.id === item.id) : null;
+      if (!prev || prev.currentValue !== item.currentValue) {
+        await logPrice(item.id, item.currentValue);
+      }
       if (wishToClear) {
         await handleDeleteWishlist(wishToClear.id);
         // Jump to the list so the newly added item is visible.
@@ -270,6 +288,9 @@ function TrackerApp({ session }: { session: Session }) {
     scheduleAutoSnapshot();
     try {
       await upsertItem(userId, updated);
+      if ("currentValue" in patch && patch.currentValue !== item.currentValue) {
+        await logPrice(item.id, updated.currentValue);
+      }
     } catch (e) {
       alert(`Kunne ikke gemme: ${e instanceof Error ? e.message : String(e)}`);
       const fresh = await loadData(userId);
@@ -616,6 +637,8 @@ function TrackerApp({ session }: { session: Session }) {
               category={currentCategory}
               categoriesById={categoriesById}
               editMode={editMode}
+              grouped={selected === "all"}
+              onOpen={(item) => setViewingItemId(item.id)}
               onEdit={handleEditItem}
               onDelete={handleDeleteItem}
               onPatch={handlePatchItem}
@@ -640,6 +663,28 @@ function TrackerApp({ session }: { session: Session }) {
           )}
         </div>
       </main>
+
+      <ItemDetailModal
+        item={viewingItemId ? data.items.find((i) => i.id === viewingItemId) ?? null : null}
+        category={
+          viewingItemId
+            ? categoriesById.get(data.items.find((i) => i.id === viewingItemId)?.categoryId ?? "")
+            : undefined
+        }
+        onClose={() => setViewingItemId(null)}
+        onEdit={(item) => {
+          setViewingItemId(null);
+          handleEditItem(item);
+        }}
+        onUpdatePrice={async (item, price) => {
+          if (price !== item.currentValue) {
+            await handlePatchItem(item, { currentValue: price });
+          } else {
+            // Same price as before — still log it so the chart shows it was checked today.
+            await logPrice(item.id, price);
+          }
+        }}
+      />
 
       <ItemFormModal
         open={itemModalOpen}
