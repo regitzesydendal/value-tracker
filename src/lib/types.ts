@@ -34,6 +34,9 @@ export const itemLocationOrder: ItemLocation[] = [
   "other",
 ];
 
+// The grades offered in the item form's dropdown (see lib/gradeBadge for looks).
+export const GRADE_OPTIONS = ["Raw", "Sealed", "PSA 8", "PSA 9", "PSA 10"] as const;
+
 export type Item = {
   id: string;
   categoryId: string;

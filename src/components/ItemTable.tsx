@@ -7,8 +7,10 @@ import {
   resolveCategoryIcon,
   renderCategoryIcon,
   resolveCategoryColor,
+  ContainerIcon,
 } from "../lib/categoryIcons";
 import { useHideValues, MONEY_MASK } from "../lib/hideValues";
+import { GradeBadge } from "../lib/gradeBadge";
 
 const fieldLabels: Record<FieldKey, string> = {
   serial: "N.",
@@ -136,6 +138,7 @@ function SortableTh({
 
 type Props = {
   items: Item[];          // filtered top-level items to display
+  allItems: Item[];       // every item in scope (used to look up children)
   category: Category | null; // null = "Alle"
   categoriesById: Map<string, Category>;
   editMode: boolean;
@@ -143,6 +146,7 @@ type Props = {
   onEdit: (item: Item) => void;
   onDelete: (id: string) => void;
   onPatch: (item: Item, patch: Partial<Item>) => void;
+  onAddChild: (parent: Item) => void;
 };
 
 // Which category groups are unfolded — remembered between visits.
@@ -157,6 +161,7 @@ function loadOpenGroups(): Set<string> {
 
 export function ItemTable({
   items,
+  allItems,
   category,
   categoriesById,
   editMode,
@@ -164,6 +169,7 @@ export function ItemTable({
   onEdit,
   onDelete,
   onPatch,
+  onAddChild,
 }: Props) {
   const { mask } = useHideValues();
   const showCategory = category === null;
@@ -174,6 +180,17 @@ export function ItemTable({
   // Show a profit/loss column whenever purchase prices are in play.
   const showGain = visibleFields.includes("boughtFor");
 
+  const childrenByParent = useMemo(() => {
+    const m = new Map<string, Item[]>();
+    for (const it of allItems) {
+      if (it.parentId) {
+        const arr = m.get(it.parentId) ?? [];
+        arr.push(it);
+        m.set(it.parentId, arr);
+      }
+    }
+    return m;
+  }, [allItems]);
 
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -248,6 +265,9 @@ export function ItemTable({
     <ItemRow
       key={item.id}
       item={item}
+      depth={0}
+      childrenByParent={childrenByParent}
+      comparator={comparator}
       showCategory={showCategory}
       showGain={showGain}
       visibleFields={visibleFields}
@@ -256,6 +276,7 @@ export function ItemTable({
       onEdit={onEdit}
       onDelete={onDelete}
       onPatch={onPatch}
+      onAddChild={onAddChild}
     />
   );
 
@@ -374,6 +395,9 @@ export function ItemTable({
 
 type RowProps = {
   item: Item;
+  depth: number;
+  childrenByParent: Map<string, Item[]>;
+  comparator: ((a: Item, b: Item) => number) | null;
   showCategory: boolean;
   showGain: boolean;
   visibleFields: FieldKey[];
@@ -382,10 +406,14 @@ type RowProps = {
   onEdit: (item: Item) => void;
   onDelete: (id: string) => void;
   onPatch: (item: Item, patch: Partial<Item>) => void;
+  onAddChild: (parent: Item) => void;
 };
 
 function ItemRow({
   item,
+  depth,
+  childrenByParent,
+  comparator,
   showCategory,
   showGain,
   visibleFields,
@@ -394,12 +422,23 @@ function ItemRow({
   onEdit,
   onDelete,
   onPatch,
+  onAddChild,
 }: RowProps) {
   const { hidden, mask } = useHideValues();
+  const [expanded, setExpanded] = useState(false);
+  const rawKids = childrenByParent.get(item.id) ?? [];
+  const kids = comparator ? [...rawKids].sort(comparator) : rawKids;
+  const hasKids = kids.length > 0;
+  const isContainer = !!item.isContainer;
+  const childrenSum = kids.reduce((s, k) => s + itemTotalValue(k), 0);
   const qty = item.quantity ?? 1;
   const cat = categoriesById.get(item.categoryId);
-  const iconNode = cat ? renderCategoryIcon(resolveCategoryIcon(cat), 16) : null;
-  const accentColor = cat ? resolveCategoryColor(cat) : undefined;
+  const catIconNode = cat ? renderCategoryIcon(resolveCategoryIcon(cat), 16) : null;
+  const catColor = cat ? resolveCategoryColor(cat) : undefined;
+  // Containers get their own "C" emblem + gold accent; everything else keeps its
+  // own category icon/colour (children included).
+  const iconNode = isContainer ? <ContainerIcon size={16} /> : catIconNode;
+  const accentColor = isContainer ? "#f5c542" : catColor;
   const gain = itemGain(item);
 
   return (
@@ -407,15 +446,15 @@ function ItemRow({
       <tr
         onClick={editMode ? undefined : () => onEdit(item)}
         className={`border-t border-neutral-100 hover:bg-neutral-50 group ${
-          editMode ? "" : "cursor-pointer"
-        }`}
+          depth > 0 ? "bg-neutral-50/40" : ""
+        } ${editMode ? "" : "cursor-pointer"}`}
         title={editMode ? undefined : "Klik for at redigere og se prisgraf"}
       >
         {showCategory && (
           <td
             className="px-3 py-2.5 text-center"
             style={{ borderLeft: accentColor ? `4px solid ${accentColor}` : undefined }}
-            title={cat?.name ?? ""}
+            title={isContainer ? "Container" : cat?.name ?? ""}
           >
             {iconNode ??
               (accentColor ? (
@@ -440,18 +479,34 @@ function ItemRow({
               column so names line up. */}
           <span className="flex items-center gap-2">
             {!showCategory && iconNode && <span className="shrink-0">{iconNode}</span>}
-            {item.grade && (
-              <span
-                className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-neutral-800 text-white whitespace-nowrap"
-                title="Stand / grade"
-              >
-                {item.grade}
-              </span>
-            )}
+            {item.grade && <GradeBadge grade={item.grade} />}
           </span>
         </td>
-        <td className="px-4 py-2.5 font-medium text-neutral-900">
+        <td
+          className="px-4 py-2.5 font-medium text-neutral-900"
+          style={{ paddingLeft: 16 + depth * 28 }}
+        >
           <span className="flex items-center gap-2 min-w-0">
+            {isContainer && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setExpanded((v) => !v);
+                }}
+                className="text-neutral-400 hover:text-neutral-700 text-xs w-4"
+                title={expanded ? "Skjul kort" : "Vis kort"}
+              >
+                {expanded ? "▼" : "▶"}
+              </button>
+            )}
+            {depth > 0 && (
+              <span
+                className="text-neutral-400 shrink-0 -ml-1 mr-0.5"
+                title="Ligger inde i en container"
+              >
+                ↳
+              </span>
+            )}
             {editMode ? (
               <CellInput
                 initial={item.name}
@@ -464,6 +519,14 @@ function ItemRow({
               />
             ) : (
               <span className="truncate">{item.name}</span>
+            )}
+            {isContainer && (
+              <span
+                className="text-[11px] px-1 py-0.5 rounded bg-blue-100 text-blue-800 shrink-0"
+                title={hasKids ? `${kids.length} kort indeni` : "Container — kan rumme kort"}
+              >
+                {hasKids ? `📦 ${kids.length}` : "📦"}
+              </span>
             )}
             {item.isPending && (
               <span
@@ -600,6 +663,14 @@ function ItemRow({
                   {qty} × {formatDKK(item.currentValue)}
                 </div>
               )}
+              {!hidden && isContainer && hasKids && (
+                <div
+                  className="text-[10px] text-neutral-400 tabular-nums"
+                  title="Sum af kort indeni"
+                >
+                  Σ {formatDKK(childrenSum)}
+                </div>
+              )}
             </>
           )}
         </td>
@@ -618,6 +689,18 @@ function ItemRow({
               editMode ? "opacity-100" : "opacity-0 group-hover:opacity-100"
             }`}
           >
+            {isContainer && (
+              <button
+                onClick={() => {
+                  onAddChild(item);
+                  setExpanded(true);
+                }}
+                className="text-xs px-2 py-1 rounded hover:bg-neutral-200 text-neutral-600"
+                title="Tilføj kort herunder"
+              >
+                +
+              </button>
+            )}
             <button
               onClick={() => onEdit(item)}
               className="text-xs px-2 py-1 rounded hover:bg-neutral-200 text-neutral-600"
@@ -628,13 +711,32 @@ function ItemRow({
             <button
               onClick={() => onDelete(item.id)}
               className="text-xs px-2 py-1 rounded hover:bg-red-100 hover:text-red-700 text-neutral-600"
-              title="Slet"
+              title={hasKids ? "Slet (sletter også kort indeni)" : "Slet"}
             >
               ✕
             </button>
           </div>
         </td>
       </tr>
+      {expanded &&
+        kids.map((child) => (
+          <ItemRow
+            key={child.id}
+            item={child}
+            depth={depth + 1}
+            childrenByParent={childrenByParent}
+            comparator={comparator}
+            showCategory={showCategory}
+            showGain={showGain}
+            visibleFields={visibleFields}
+            categoriesById={categoriesById}
+            editMode={editMode}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onPatch={onPatch}
+            onAddChild={onAddChild}
+          />
+        ))}
     </>
   );
 }

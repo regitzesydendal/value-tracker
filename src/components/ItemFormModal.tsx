@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import type { Category, Item, ItemLocation } from "../lib/types";
-import { itemLocationLabels, itemLocationOrder } from "../lib/types";
+import { GRADE_OPTIONS, itemLocationLabels, itemLocationOrder } from "../lib/types";
 import { parseAmount } from "../lib/format";
 import { PriceChart } from "./PriceChart";
+
 
 type Props = {
   open: boolean;
@@ -136,6 +137,8 @@ export function ItemFormModal({
   const category = categories.find((c) => c.id === categoryId);
   const fields = category?.fields ?? [];
 
+  // Containers this item can be moved into (never itself).
+  const moveTargets = (containers ?? []).filter((c) => c.id !== initial?.id);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -216,6 +219,29 @@ export function ItemFormModal({
                 ))}
               </select>
             </Field>
+
+            {!parent && !isContainer && moveTargets.length > 0 && (
+              <Field label="Placér under (container)">
+                <select
+                  value={parentId}
+                  onChange={(e) => setParentId(e.target.value)}
+                  className="input"
+                >
+                  <option value="">— Ingen (øverste niveau) —</option>
+                  {moveTargets.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                {parentId && (
+                  <div className="text-xs text-neutral-500 mt-1">
+                    Flyttes ind i “{moveTargets.find((c) => c.id === parentId)?.name}”
+                    og tæller ikke længere selvstændigt i kategori-totalen.
+                  </div>
+                )}
+              </Field>
+            )}
 
             <Field label="Navn">
               <input
@@ -314,12 +340,22 @@ export function ItemFormModal({
                 />
               </Field>
               <Field label="Stand / grade (valgfrit)">
-                <input
+                <select
                   value={grade}
                   onChange={(e) => setGrade(e.target.value)}
                   className="input"
-                  placeholder="PSA 10, Raw …"
-                />
+                >
+                  <option value="">—</option>
+                  {GRADE_OPTIONS.map((g) => (
+                    <option key={g} value={g}>
+                      {g}
+                    </option>
+                  ))}
+                  {/* Keep an older free-text grade selectable so it isn't lost. */}
+                  {grade && !(GRADE_OPTIONS as readonly string[]).includes(grade) && (
+                    <option value={grade}>{grade}</option>
+                  )}
+                </select>
               </Field>
             </div>
 
@@ -445,6 +481,21 @@ export function ItemFormModal({
               </label>
             </div>
 
+            {!isChild && (
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isContainer}
+                  onChange={(e) => setIsContainer(e.target.checked)}
+                />
+                <span>
+                  Container
+                  <span className="text-neutral-500 ml-1">
+                    (kan rumme kort, f.eks. "Collectr")
+                  </span>
+                </span>
+              </label>
+            )}
           </div>
 
           <div className="px-6 py-3 border-t border-neutral-200 flex justify-end gap-2 bg-neutral-50">
