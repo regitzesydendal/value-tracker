@@ -211,8 +211,8 @@ export function CsvImportModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+      <div className="bg-white rounded-2xl border border-neutral-200 shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
         <div className="px-6 py-4 border-b border-neutral-200">
           <h2 className="text-lg font-semibold">Importér fra CSV / regneark</h2>
           <button
@@ -351,7 +351,7 @@ export function CsvImportModal({
           <button
             onClick={handleImport}
             disabled={importing || validRows.length === 0 || !categoryId}
-            className="px-3 py-1.5 text-sm rounded bg-neutral-900 text-white hover:bg-neutral-800 disabled:opacity-50"
+            className="px-3 py-1.5 text-sm rounded bg-accent text-ink font-semibold hover:bg-accent-soft disabled:opacity-50"
           >
             {importing
               ? "Importerer…"

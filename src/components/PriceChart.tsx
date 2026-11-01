@@ -92,23 +92,31 @@ export function PriceChart({ item }: { item: Item }) {
         <div className="h-44">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-              <CartesianGrid stroke="#f0f0f0" vertical={false} />
+              <CartesianGrid stroke="#242d3d" vertical={false} />
               <XAxis
                 dataKey="date"
                 tickFormatter={formatDate}
-                tick={{ fontSize: 11, fill: "#737373" }}
+                tick={{ fontSize: 11, fill: "#8b95a8" }}
                 tickLine={false}
-                axisLine={{ stroke: "#e5e5e5" }}
+                axisLine={{ stroke: "#242d3d" }}
               />
               <YAxis
                 tickFormatter={(v: number) => (hidden ? MONEY_MASK : formatDKK(v))}
-                tick={{ fontSize: 11, fill: "#737373" }}
+                tick={{ fontSize: 11, fill: "#8b95a8" }}
                 tickLine={false}
                 axisLine={false}
                 width={72}
-                domain={["auto", "auto"]}
+                // A lone starting point gets some headroom instead of a hair-thin scale.
+                domain={
+                  chartData.length === 1
+                    ? [(min: number) => Math.floor(min * 0.8), (max: number) => Math.ceil(max * 1.2)]
+                    : ["auto", "auto"]
+                }
               />
               <Tooltip
+                contentStyle={{ fontSize: 12, borderRadius: 10, border: "1px solid #242d3d", background: "#131a26" }}
+                labelStyle={{ color: "#aab3c3" }}
+                itemStyle={{ color: "#f3f5f9" }}
                 formatter={(v) => [mask(formatDKK(Number(v))), "Pris"]}
                 labelFormatter={(d, payload) => {
                   const label = payload?.[0]?.payload?.label;
@@ -118,7 +126,7 @@ export function PriceChart({ item }: { item: Item }) {
               <Line
                 type="monotone"
                 dataKey="price"
-                stroke="#2563eb"
+                stroke="#f2c14e"
                 strokeWidth={2}
                 dot={{ r: 3 }}
                 activeDot={{ r: 5 }}

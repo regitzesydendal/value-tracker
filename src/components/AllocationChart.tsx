@@ -2,21 +2,16 @@ import { useMemo } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import type { AppData } from "../lib/types";
 import { formatDKK } from "../lib/format";
-import { itemTotalValue } from "../lib/itemCalc";
+import { valueByLeafCategory } from "../lib/itemCalc";
 import { resolveCategoryColor } from "../lib/categoryIcons";
 import { useHideValues } from "../lib/hideValues";
 
 // A donut showing how big a share of total value each category makes up.
-// Children belong to their parent, so only top-level items are counted —
-// matching the totals shown in the sidebar.
+// Cards inside containers (e.g. Collectr) count toward their own category.
 export function AllocationChart({ data }: { data: AppData }) {
   const { mask } = useHideValues();
   const slices = useMemo(() => {
-    const totals = new Map<string, number>();
-    for (const it of data.items) {
-      if (it.parentId) continue;
-      totals.set(it.categoryId, (totals.get(it.categoryId) ?? 0) + itemTotalValue(it));
-    }
+    const totals = valueByLeafCategory(data.items);
     return data.categories
       .map((c) => ({
         name: c.name,
@@ -33,11 +28,11 @@ export function AllocationChart({ data }: { data: AppData }) {
   if (slices.length === 0 || total === 0) return null;
 
   return (
-    <div className="border border-neutral-200 rounded bg-white p-4 mb-4">
-      <div className="text-xs uppercase tracking-wider text-neutral-500 mb-3">
+    <div className="panel p-5 mb-6">
+      <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mb-3">
         Fordeling
       </div>
-      <div className="flex flex-col sm:flex-row items-center gap-6">
+      <div className="flex flex-col sm:flex-row items-center gap-8">
         <div style={{ width: 200, height: 200 }} className="shrink-0">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -50,6 +45,7 @@ export function AllocationChart({ data }: { data: AppData }) {
                 paddingAngle={1}
                 minAngle={3}
                 stroke="none"
+                isAnimationActive={false}
               >
                 {slices.map((s) => (
                   <Cell key={s.name} fill={s.color} />
@@ -59,15 +55,18 @@ export function AllocationChart({ data }: { data: AppData }) {
                 formatter={(value) => mask(formatDKK(Number(value)))}
                 contentStyle={{
                   fontSize: 12,
-                  borderRadius: 6,
-                  border: "1px solid #e5e7eb",
+                  borderRadius: 10,
+                  border: "1px solid #242d3d",
+                  background: "#131a26",
+                  color: "#f3f5f9",
                 }}
+                itemStyle={{ color: "#f3f5f9" }}
               />
             </PieChart>
           </ResponsiveContainer>
         </div>
 
-        <ul className="flex-1 w-full space-y-1.5 min-w-0">
+        <ul className="flex-1 w-full max-w-lg space-y-2 min-w-0">
           {slices.map((s) => {
             const pct = (s.value / total) * 100;
             return (

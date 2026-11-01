@@ -316,16 +316,16 @@ export function ItemTable({
 
   if (items.length === 0) {
     return (
-      <div className="text-sm text-neutral-500 py-12 text-center border border-dashed border-neutral-200 rounded">
+      <div className="text-sm text-neutral-500 py-16 text-center border border-dashed border-neutral-200 rounded-xl">
         Ingen elementer endnu. Klik på “Tilføj” øverst for at komme i gang.
       </div>
     );
   }
 
   return (
-    <div className="border border-neutral-200 rounded overflow-hidden bg-white">
+    <div className="panel overflow-hidden">
       <table className="w-full text-sm">
-        <thead className="bg-neutral-50 text-neutral-500 text-xs uppercase tracking-wider">
+        <thead className="bg-neutral-50 text-neutral-500 text-[11px] uppercase tracking-wider">
           <tr>
             {showCategory && (
               <th className="px-3 py-2.5 w-12">

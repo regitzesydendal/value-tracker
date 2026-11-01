@@ -14,8 +14,7 @@ import { WishlistView } from "./components/WishlistView";
 import { WishlistFormModal } from "./components/WishlistFormModal";
 import { AllocationChart } from "./components/AllocationChart";
 import { SummaryCards } from "./components/SummaryCards";
-import { CategoryIcon } from "./lib/categoryIcons";
-import { themeBgUrl } from "./lib/themeBackground";
+import { CategoryIcon, ContainerIcon } from "./lib/categoryIcons";
 import { HideValuesProvider } from "./lib/hideValues";
 import {
   loadData,
@@ -186,9 +185,22 @@ function TrackerApp({ session }: { session: Session }) {
 
   // Top-level items only — children are rendered inside their parent.
   // Search matches children too: if a child matches, also include its parent.
+  // A container with items (e.g. "Collectr") can be selected in the sidebar
+  // like a category; it then lists what's inside it.
+  const selectedContainer = useMemo(
+    () => data.items.find((i) => i.id === selected && i.isContainer) ?? null,
+    [data.items, selected],
+  );
+
   const filteredItems = useMemo(() => {
+    // Top-level containers with items have their own sidebar entry, so they're
+    // left out of category lists.
+    const parentIds = new Set(data.items.map((i) => i.parentId).filter(Boolean));
     const isInCat = (i: Item) =>
-      selected === "all" || i.categoryId === selected;
+      selectedContainer
+        ? i.parentId === selectedContainer.id
+        : !i.parentId &&
+          (selected === "all" || (i.categoryId === selected && !parentIds.has(i.id)));
     const q = search.trim().toLowerCase();
     const matches = (i: Item) =>
       !q ||
@@ -197,7 +209,7 @@ function TrackerApp({ session }: { session: Session }) {
       i.version?.toLowerCase().includes(q);
 
     if (!q) {
-      return data.items.filter((i) => !i.parentId && isInCat(i));
+      return data.items.filter(isInCat);
     }
     // With search: include any top-level item that matches OR that contains a
     // match somewhere inside it (containers can be nested).
@@ -212,17 +224,19 @@ function TrackerApp({ session }: { session: Session }) {
       }
     }
     return data.items.filter(
-      (i) =>
-        !i.parentId &&
-        isInCat(i) &&
-        (matches(i) || parentIdsWithMatchingChild.has(i.id)),
+      (i) => isInCat(i) && (matches(i) || parentIdsWithMatchingChild.has(i.id)),
     );
-  }, [data.items, selected, search]);
+  }, [data.items, selected, selectedContainer, search]);
 
   const currentCategory =
     selected === "all" ? null : data.categories.find((c) => c.id === selected) ?? null;
 
   function handleAddItem() {
+    // Inside a collection, new items go into it.
+    if (selectedContainer) {
+      handleAddChild(selectedContainer);
+      return;
+    }
     setEditingItem(null);
     setAddingChildOf(null);
     setItemModalOpen(true);
@@ -498,17 +512,7 @@ function TrackerApp({ session }: { session: Session }) {
 
   return (
     <HideValuesProvider>
-    <div
-      className="min-h-screen flex"
-      style={{
-        backgroundColor: "#0a1733",
-        backgroundImage: `url("${themeBgUrl}")`,
-        backgroundRepeat: "no-repeat",
-        backgroundAttachment: "fixed",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
-    >
+    <div className="min-h-screen flex">
       <Sidebar
         categories={data.categories}
         items={data.items}
@@ -521,23 +525,28 @@ function TrackerApp({ session }: { session: Session }) {
         wishlistActive={view === "wishlist"}
         wishlistCount={wishlist.length}
         onSelectWishlist={() => setView("wishlist")}
+        email={session.user.email ?? ""}
+        onSignOut={handleSignOut}
       />
 
       <main className="flex-1 min-w-0">
-        <header className="border-b border-neutral-200 bg-white px-8 py-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <header className="sticky top-0 z-30 border-b border-neutral-200 bg-ink/75 backdrop-blur-xl px-8 py-4 flex flex-wrap items-center gap-x-4 gap-y-3">
           <div className="min-w-0">
-            <h1 className="text-xl font-semibold tracking-tight whitespace-nowrap flex items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight whitespace-nowrap flex items-center gap-2.5">
+              {view === "list" && selectedContainer && <ContainerIcon size={26} />}
               {view === "list" && currentCategory && (
-                <CategoryIcon category={currentCategory} size={22} />
+                <CategoryIcon category={currentCategory} size={26} />
               )}
               <span>
                 {view === "history"
                   ? "Historik"
                   : view === "wishlist"
                     ? "Ønskeliste"
-                    : currentCategory
+                    : selectedContainer
+                      ? selectedContainer.name
+                      : currentCategory
                       ? currentCategory.name
-                      : "Alle elementer"}
+                      : "Overblik"}
               </span>
             </h1>
             <div className="text-xs text-neutral-500 mt-0.5">
@@ -546,43 +555,54 @@ function TrackerApp({ session }: { session: Session }) {
                     new Set(snapshots.map((s) => s.date)).size === 1 ? "" : "s"
                   }`
                 : view === "wishlist"
-                  ? `${wishlist.length} ting${wishlist.length === 1 ? "" : ""}`
+                  ? `${wishlist.length} ting`
                   : `${filteredItems.length} element${filteredItems.length === 1 ? "" : "er"}`}
             </div>
           </div>
 
           <div className="ml-auto flex flex-wrap items-center gap-2">
-            <div className="flex rounded border border-neutral-200 overflow-hidden text-sm">
-              <button
-                onClick={() => setView("list")}
-                className={`px-3 py-1.5 whitespace-nowrap ${
-                  view === "list"
-                    ? "bg-neutral-900 text-white"
-                    : "bg-white text-neutral-600 hover:bg-neutral-100"
-                }`}
-              >
-                Liste
-              </button>
-              <button
-                onClick={() => setView("history")}
-                className={`px-3 py-1.5 whitespace-nowrap ${
-                  view === "history"
-                    ? "bg-neutral-900 text-white"
-                    : "bg-white text-neutral-600 hover:bg-neutral-100"
-                }`}
-              >
-                Historik
-              </button>
-            </div>
+            {view !== "wishlist" && (
+              <div className="flex p-0.5 rounded-lg border border-neutral-200 bg-neutral-50 text-sm">
+                {(["list", "history"] as const).map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => setView(v)}
+                    className={`px-3 py-1.5 rounded-md whitespace-nowrap font-medium transition-colors ${
+                      view === v
+                        ? "bg-neutral-100 text-neutral-900 shadow-sm"
+                        : "text-neutral-500 hover:text-neutral-900"
+                    }`}
+                  >
+                    {v === "list" ? "Liste" : "Historik"}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {view === "list" && (
               <>
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Søg…"
-                  className="input max-w-[180px]"
-                />
+                <div className="relative">
+                  <svg
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    aria-hidden
+                  >
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="m20 20-3.5-3.5" />
+                  </svg>
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Søg i samlingen…"
+                    className="input w-52 pl-8"
+                  />
+                </div>
 
                 {currentCategory && (
                   <button
@@ -590,7 +610,7 @@ function TrackerApp({ session }: { session: Session }) {
                       setEditingCat(currentCategory);
                       setCatModalOpen(true);
                     }}
-                    className="text-sm px-3 py-1.5 rounded hover:bg-neutral-100 text-neutral-600 whitespace-nowrap"
+                    className="btn"
                   >
                     Rediger kategori
                   </button>
@@ -598,48 +618,27 @@ function TrackerApp({ session }: { session: Session }) {
 
                 <button
                   onClick={() => setEditMode((v) => !v)}
-                  className={`text-sm px-3 py-1.5 rounded whitespace-nowrap ${
+                  className={
                     editMode
-                      ? "bg-amber-500 text-white hover:bg-amber-600"
-                      : "border border-neutral-200 hover:bg-neutral-100 text-neutral-700"
-                  }`}
+                      ? "text-sm px-3 py-2 rounded-lg font-semibold whitespace-nowrap bg-amber-500 text-ink hover:bg-amber-600"
+                      : "btn"
+                  }
                   title="Regneark-tilstand: klik i felterne og ret direkte. Tab/Enter = næste felt, gemmes automatisk."
                 >
-                  {editMode ? "✓ Færdig" : "✏️ Redigér"}
+                  {editMode ? "✓ Færdig" : "Redigér"}
                 </button>
 
-                <button
-                  onClick={() => setCsvOpen(true)}
-                  className="text-sm px-3 py-1.5 rounded border border-neutral-200 hover:bg-neutral-100 text-neutral-700 whitespace-nowrap"
-                >
-                  ⇪ Importér
+                <button onClick={() => setCsvOpen(true)} className="btn">
+                  Importér
                 </button>
 
-                <button
-                  onClick={handleAddItem}
-                  className="text-sm px-3 py-1.5 rounded bg-neutral-900 text-white hover:bg-neutral-800 whitespace-nowrap"
-                >
+                <button onClick={handleAddItem} className="btn-primary">
                   + Tilføj
                 </button>
               </>
             )}
 
             <SnapshotButton userId={userId} data={data} onDone={refreshSnapshots} />
-
-            <div className="border-l border-neutral-200 pl-3 flex items-center gap-2">
-              <span
-                className="text-xs text-neutral-500 max-w-[140px] truncate"
-                title={session.user.email ?? ""}
-              >
-                {session.user.email}
-              </span>
-              <button
-                onClick={handleSignOut}
-                className="text-xs text-neutral-500 underline hover:text-neutral-900 whitespace-nowrap"
-              >
-                Log ud
-              </button>
-            </div>
           </div>
         </header>
 
@@ -688,7 +687,7 @@ function TrackerApp({ session }: { session: Session }) {
         open={itemModalOpen}
         initial={editingItem}
         categories={data.categories}
-        defaultCategoryId={selected !== "all" ? selected : undefined}
+        defaultCategoryId={currentCategory?.id}
         parent={addingChildOf}
         prefill={wishPrefill}
         containers={data.items.filter((i) => i.isContainer)}
@@ -716,7 +715,7 @@ function TrackerApp({ session }: { session: Session }) {
         open={csvOpen}
         userId={userId}
         categories={data.categories}
-        defaultCategoryId={selected !== "all" ? selected : undefined}
+        defaultCategoryId={currentCategory?.id}
         onClose={() => setCsvOpen(false)}
         onImported={async () => {
           const fresh = await loadData(userId);

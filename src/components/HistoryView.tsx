@@ -39,7 +39,7 @@ const PALETTE = [
   "#ea580c", // orange
 ];
 
-const TOTAL_COLOR = "#111827";
+const TOTAL_COLOR = "#f2c14e";
 
 export function HistoryView({
   userId,
@@ -166,18 +166,18 @@ export function HistoryView({
       )}
 
       {hasAnyData && (
-        <div className="border border-neutral-200 rounded bg-white p-4">
+        <div className="panel p-5">
           <ResponsiveContainer width="100%" height={400}>
             <LineChart data={chartData} margin={{ top: 16, right: 24, bottom: 8, left: 8 }}>
-              <CartesianGrid stroke="#f1f5f9" />
+              <CartesianGrid stroke="#242d3d" />
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: 11, fill: "#6b7280" }}
-                stroke="#d1d5db"
+                tick={{ fontSize: 11, fill: "#8b95a8" }}
+                stroke="#333d50"
               />
               <YAxis
-                tick={{ fontSize: 11, fill: "#6b7280" }}
-                stroke="#d1d5db"
+                tick={{ fontSize: 11, fill: "#8b95a8" }}
+                stroke="#333d50"
                 tickFormatter={(v) => `${Math.round(v / 1000)}k`}
                 width={50}
               />
@@ -185,10 +185,11 @@ export function HistoryView({
                 formatter={(value) => formatDKK(Number(value))}
                 contentStyle={{
                   fontSize: 12,
-                  borderRadius: 6,
-                  border: "1px solid #e5e7eb",
+                  borderRadius: 10,
+                  border: "1px solid #242d3d",
+                  background: "#131a26",
                 }}
-                labelStyle={{ fontWeight: 600 }}
+                labelStyle={{ fontWeight: 600, color: "#f3f5f9" }}
               />
               <Legend
                 wrapperStyle={{ fontSize: 12, paddingTop: 12 }}

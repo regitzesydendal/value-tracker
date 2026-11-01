@@ -72,8 +72,8 @@ export function CategoryFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+      <div className="bg-white rounded-2xl border border-neutral-200 shadow-2xl w-full max-w-md">
         <form onSubmit={handleSubmit}>
           <div className="px-6 py-4 border-b border-neutral-200">
             <h2 className="text-lg font-semibold">
@@ -210,7 +210,7 @@ export function CategoryFormModal({
               </button>
               <button
                 type="submit"
-                className="px-3 py-1.5 text-sm rounded bg-neutral-900 text-white hover:bg-neutral-800"
+                className="px-3 py-1.5 text-sm rounded bg-accent text-ink font-semibold hover:bg-accent-soft"
               >
                 Gem
               </button>

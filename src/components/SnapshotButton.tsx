@@ -38,15 +38,15 @@ export function SnapshotButton({ userId, data, onDone }: Props) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="text-sm px-3 py-1.5 rounded border border-neutral-200 hover:bg-neutral-100 text-neutral-700"
+        className="btn"
         title="Gem en snapshot af nuværende værdier"
       >
-        📸 Snapshot
+        Snapshot
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="bg-white rounded-2xl border border-neutral-200 shadow-2xl w-full max-w-sm">
             <form onSubmit={handleSubmit}>
               <div className="px-6 py-4 border-b border-neutral-200">
                 <h2 className="text-lg font-semibold">Tag snapshot</h2>
@@ -86,7 +86,7 @@ export function SnapshotButton({ userId, data, onDone }: Props) {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-3 py-1.5 text-sm rounded bg-neutral-900 text-white hover:bg-neutral-800 disabled:opacity-50"
+                  className="px-3 py-1.5 text-sm rounded bg-accent text-ink font-semibold hover:bg-accent-soft disabled:opacity-50"
                 >
                   {saving ? "Gemmer…" : "Gem snapshot"}
                 </button>

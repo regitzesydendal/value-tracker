@@ -131,7 +131,7 @@ VITE_SUPABASE_ANON_KEY=eyJhbGciOi...`}
           <button
             type="submit"
             disabled={sending}
-            className="w-full px-3 py-2 text-sm rounded bg-neutral-900 text-white hover:bg-neutral-800 disabled:opacity-50"
+            className="w-full px-3 py-2 text-sm rounded bg-accent text-ink font-semibold hover:bg-accent-soft disabled:opacity-50"
           >
             {sending ? "Logger ind…" : "Log ind"}
           </button>

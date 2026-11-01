@@ -54,15 +54,16 @@ export function SummaryCards({
   const tone = (n: number) => (n >= 0 ? "up" : "down");
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
       <Card
         label="Samlet værdi"
         value={mask(formatDKK(stats.value))}
         hidden={hidden}
+        highlight
         action={
           <button
             onClick={toggle}
-            className="flex items-center gap-1.5 text-xs px-2 py-1 rounded-full border border-neutral-200 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+            className="flex items-center gap-1.5 text-xs px-2 py-1 rounded-full border border-neutral-200 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 transition-colors"
             title={hidden ? "Vis beløb" : "Skjul beløb (anonymisér hele siden)"}
           >
             {hidden ? <EyeOffIcon /> : <EyeIcon />}
@@ -107,6 +108,7 @@ function Card({
   tone = "neutral",
   hidden = false,
   action,
+  highlight = false,
 }: {
   label: string;
   value: string;
@@ -114,6 +116,7 @@ function Card({
   tone?: "up" | "down" | "neutral";
   hidden?: boolean;
   action?: React.ReactNode;
+  highlight?: boolean; // the headline card gets a gold glow
 }) {
   // When hidden, neutralise the colour too so up/down (gain/loss) isn't leaked.
   const color = hidden
@@ -124,12 +127,20 @@ function Card({
         ? "text-red-600"
         : "text-neutral-900";
   return (
-    <div className="border border-neutral-200 rounded bg-white p-4">
+    <div
+      className={`panel p-5 ${
+        highlight ? "border-accent/30 bg-gradient-to-br from-accent/[0.12] via-white to-white" : ""
+      }`}
+    >
       <div className="flex items-start justify-between gap-2">
-        <div className="text-xs uppercase tracking-wider text-neutral-500">{label}</div>
+        <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+          {label}
+        </div>
         {action}
       </div>
-      <div className={`text-2xl font-semibold mt-1 tabular-nums ${color}`}>{value}</div>
+      <div className={`text-3xl font-extrabold tracking-tight mt-2 tabular-nums ${color}`}>
+        {value}
+      </div>
       {sub && !hidden && <div className={`text-xs mt-0.5 tabular-nums ${color}`}>{sub}</div>}
     </div>
   );

@@ -51,3 +51,23 @@ export function rollUpContainers(data: AppData): AppData {
     ),
   };
 }
+
+// True for a container that currently holds items (e.g. "Collectr"). Those are
+// shown as their own collection rather than inside a category.
+export function hasChildren(item: Item, items: Item[]): boolean {
+  return !!item.isContainer && items.some((i) => i.parentId === item.id);
+}
+
+// Value per category counting every real item wherever it lives — cards inside
+// containers count toward their OWN category (so One Piece cards inside
+// "Collectr" count as One Piece). Containers that hold items are skipped,
+// since their value is just the sum of those items.
+export function valueByLeafCategory(items: Item[]): Map<string, number> {
+  const parents = new Set(items.filter((i) => i.parentId).map((i) => i.parentId!));
+  const totals = new Map<string, number>();
+  for (const it of items) {
+    if (it.isContainer && parents.has(it.id)) continue;
+    totals.set(it.categoryId, (totals.get(it.categoryId) ?? 0) + itemTotalValue(it));
+  }
+  return totals;
+}

@@ -80,7 +80,7 @@ export function WishlistView({ items, onAdd, onEdit, onDelete, onMarkBought }: P
         </div>
         <button
           onClick={onAdd}
-          className="text-sm px-3 py-1.5 rounded bg-neutral-900 text-white hover:bg-neutral-800 whitespace-nowrap"
+          className="text-sm px-3 py-1.5 rounded bg-accent text-ink font-semibold hover:bg-accent-soft whitespace-nowrap"
         >
           + Tilføj til ønskeliste
         </button>

@@ -62,6 +62,18 @@ export function GradeBadge({ grade }: { grade: string }) {
   );
 }
 
+// Two crossing arrows ("shuffle") — for mixed folders.
+function MixIcon() {
+  return (
+    <svg width="11" height="10" viewBox="0 0 12 10" aria-hidden className="shrink-0" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 2.5h2.2c1.6 0 2.4 5 4 5H11" />
+      <path d="M1 7.5h2.2c.8 0 1.3-1 1.7-2" />
+      <path d="M7 4.5c.4-1 .9-2 1.7-2H11" />
+      <path d="M9.6 1.2 11 2.5 9.6 3.8M9.6 6.2 11 7.5 9.6 8.8" />
+    </svg>
+  );
+}
+
 // Small folder glyph for generic folder tags.
 function FolderIcon() {
   return (
@@ -87,6 +99,16 @@ const folderKinds: { test: RegExp; label: string; style: CSSProperties; icon: ()
   { test: /master\s*set/i, label: "Masterset", style: gradient("#dbeafe", "#93c5fd", "#60a5fa", "#1e3a8a"), icon: () => <span aria-hidden>◆</span> },
   { test: /condition|played|damaged/i, label: "Slidte", style: gradient("#fef3c7", "#fcd34d", "#f59e0b", "#78350f"), icon: () => <span aria-hidden>⚠</span> },
   { test: /\bny|nye|new\b/i, label: "Nye", style: gradient("#dcfce7", "#86efac", "#4ade80", "#14532d"), icon: () => <span aria-hidden>✦</span> },
+  {
+    test: /\bbsp\b|mix|blandet|diverse/i,
+    label: "Mix",
+    style: {
+      backgroundImage: "linear-gradient(110deg, #fecaca, #fde68a 25%, #bbf7d0 50%, #bfdbfe 75%, #e9d5ff)",
+      border: "1px solid #c4b5fd",
+      color: "#3b1f6b",
+    },
+    icon: () => <MixIcon />,
+  },
   { test: /one\s*piece/i, label: "One Piece", style: gradient("#fee2e2", "#fca5a5", "#f87171", "#7f1d1d"), icon: () => <span aria-hidden>☠</span> },
 ];
 
