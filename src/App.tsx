@@ -210,12 +210,6 @@ function TrackerApp({ session }: { session: Session }) {
     setItemModalOpen(true);
   }
 
-  function handleAddChild(parent: Item) {
-    setEditingItem(null);
-    setAddingChildOf(parent);
-    setItemModalOpen(true);
-  }
-
   async function handleSubmitItem(
     payload: Omit<Item, "id" | "createdAt" | "updatedAt"> & { id?: string },
   ) {
@@ -630,7 +624,6 @@ function TrackerApp({ session }: { session: Session }) {
               )}
               <ItemTable
                 items={filteredItems}
-              allItems={data.items}
               category={currentCategory}
               categoriesById={categoriesById}
               editMode={editMode}
@@ -638,7 +631,6 @@ function TrackerApp({ session }: { session: Session }) {
               onEdit={handleEditItem}
               onDelete={handleDeleteItem}
               onPatch={handlePatchItem}
-              onAddChild={handleAddChild}
               />
             </>
           ) : view === "history" ? (
