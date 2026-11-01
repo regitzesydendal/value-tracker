@@ -26,6 +26,7 @@ import {
   deleteItem as dbDeleteItem,
   takeSnapshot,
   recordItemPrice,
+  ensureStartingPrices,
   loadWishlist,
   upsertWishlistItem,
   deleteWishlistItem as dbDeleteWishlistItem,
@@ -124,6 +125,13 @@ function TrackerApp({ session }: { session: Session }) {
     }
   }
 
+  // Make sure every item has at least one point in its price history.
+  function ensurePriceHistory(items: Item[]) {
+    ensureStartingPrices(userId, items, new Date().toISOString().slice(0, 10)).catch((e) =>
+      console.warn("ensureStartingPrices failed:", e),
+    );
+  }
+
   // Initial load: fetch items + categories + snapshots for this user.
   useEffect(() => {
     let cancelled = false;
@@ -136,6 +144,10 @@ function TrackerApp({ session }: { session: Session }) {
         ]);
         if (!cancelled) {
           setData(fresh);
+          // Every item gets a starting point in its price history (today).
+          ensureStartingPrices(userId, fresh.items, new Date().toISOString().slice(0, 10)).catch(
+            (e) => console.warn("ensureStartingPrices failed:", e),
+          );
           setSnapshots(snaps);
           setWishlist(wish);
         }
@@ -709,6 +721,7 @@ function TrackerApp({ session }: { session: Session }) {
         onImported={async () => {
           const fresh = await loadData(userId);
           setData(fresh);
+          ensurePriceHistory(fresh.items);
         }}
         onOpenCollectr={() => {
           setCsvOpen(false);
@@ -723,7 +736,9 @@ function TrackerApp({ session }: { session: Session }) {
         items={rawData.items}
         onClose={() => setCollectrOpen(false)}
         onImported={async () => {
-          setData(await loadData(userId));
+          const fresh = await loadData(userId);
+          setData(fresh);
+          ensurePriceHistory(fresh.items);
           scheduleAutoSnapshot();
         }}
       />

@@ -412,6 +412,35 @@ export async function recordItemPrice(
   if (error) throw error;
 }
 
+// Give every item that has no price history yet a starting point (its current
+// value, dated today), so its price chart starts now instead of waiting for a
+// purchase date. Containers are skipped — their value is the sum of contents.
+// Returns how many starting points were written.
+export async function ensureStartingPrices(
+  userId: string,
+  items: Item[],
+  date: string,
+): Promise<number> {
+  const priced = new Set<string>();
+  const pageSize = 1000; // Supabase returns at most 1000 rows per request
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from("item_prices")
+      .select("item_id")
+      .eq("user_id", userId)
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    for (const r of data as { item_id: string }[]) priced.add(r.item_id);
+    if (data.length < pageSize) break;
+  }
+  const missing = items.filter((i) => !i.isContainer && !priced.has(i.id));
+  await recordItemPrices(
+    userId,
+    missing.map((i) => ({ itemId: i.id, date, price: i.currentValue ?? 0 })),
+  );
+  return missing.length;
+}
+
 // Bulk version of recordItemPrice (used by imports).
 export async function recordItemPrices(
   userId: string,

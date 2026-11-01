@@ -75,13 +75,20 @@ export function PriceChart({ item }: { item: Item }) {
           </span>
         )}
       </div>
-      {chartData.length < 2 ? (
+      {historyError || chartData.length === 0 ? (
         <div className="h-28 flex items-center justify-center text-xs text-neutral-400 border border-dashed border-neutral-200 rounded text-center px-6">
           {historyError
             ? "Prishistorik er ikke slået til endnu — kør supabase/migration_item_prices.sql i Supabase."
-            : "Grafen kommer, når der er registreret mindst to priser. Ret “Nuværende værdi” og gem, næste gang du tjekker prisen."}
+            : "Ingen priser registreret endnu."}
         </div>
       ) : (
+        <>
+        {chartData.length === 1 && (
+          <div className="text-[11px] text-neutral-500 mb-1">
+            Startpunkt {formatDate(chartData[0].date)}. Opdater “Nuværende værdi”, næste gang du
+            tjekker prisen, så tegnes kurven derfra.
+          </div>
+        )}
         <div className="h-44">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
@@ -120,6 +127,7 @@ export function PriceChart({ item }: { item: Item }) {
             </LineChart>
           </ResponsiveContainer>
         </div>
+        </>
       )}
     </div>
   );
