@@ -206,10 +206,15 @@ export async function insertItems(userId: string, items: Item[]): Promise<number
     for_sale: item.forSale ?? false,
     asking_price: item.askingPrice ?? null,
     location: item.location ?? null,
+    created_at: item.createdAt,
     updated_at: item.updatedAt,
   }));
-  const { error } = await supabase.from("items").insert(rows);
-  if (error) throw error;
+  // Chunked so big imports stay under request-size limits. Callers must order
+  // containers before the items inside them (parent_id is a foreign key).
+  for (let i = 0; i < rows.length; i += 200) {
+    const { error } = await supabase.from("items").insert(rows.slice(i, i + 200));
+    if (error) throw error;
+  }
   return rows.length;
 }
 
@@ -405,6 +410,26 @@ export async function recordItemPrice(
     { onConflict: "item_id,date" },
   );
   if (error) throw error;
+}
+
+// Bulk version of recordItemPrice (used by imports).
+export async function recordItemPrices(
+  userId: string,
+  points: PricePoint[],
+): Promise<void> {
+  const rows = points.map((p) => ({
+    id: `${p.itemId}:${p.date}`,
+    user_id: userId,
+    item_id: p.itemId,
+    date: p.date,
+    price: p.price,
+  }));
+  for (let i = 0; i < rows.length; i += 500) {
+    const { error } = await supabase
+      .from("item_prices")
+      .upsert(rows.slice(i, i + 500), { onConflict: "item_id,date" });
+    if (error) throw error;
+  }
 }
 
 // ---------- Wishlist ("Ønskeliste") ----------

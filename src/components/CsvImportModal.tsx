@@ -10,6 +10,7 @@ type Props = {
   defaultCategoryId?: string;
   onClose: () => void;
   onImported: () => void;
+  onOpenCollectr: () => void;
 };
 
 type ParsedRow = {
@@ -152,6 +153,7 @@ export function CsvImportModal({
   defaultCategoryId,
   onClose,
   onImported,
+  onOpenCollectr,
 }: Props) {
   const [text, setText] = useState("");
   const [categoryId, setCategoryId] = useState(defaultCategoryId || categories[0]?.id || "");
@@ -213,6 +215,13 @@ export function CsvImportModal({
       <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
         <div className="px-6 py-4 border-b border-neutral-200">
           <h2 className="text-lg font-semibold">Importér fra CSV / regneark</h2>
+          <button
+            type="button"
+            onClick={onOpenCollectr}
+            className="mt-2 text-xs px-2 py-1 rounded bg-blue-50 text-blue-800 hover:bg-blue-100"
+          >
+            Har du en fil fra Collectr? Brug Collectr-import →
+          </button>
           <p className="text-xs text-neutral-500 mt-1">
             Paste fra Excel / Sheets, eller upload en .csv fil. Vi forsøger
             automatisk at genkende kolonnerne (Navn, Nuværende værdi, Sæt osv.).

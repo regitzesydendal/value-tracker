@@ -430,7 +430,6 @@ function ItemRow({
   const kids = comparator ? [...rawKids].sort(comparator) : rawKids;
   const hasKids = kids.length > 0;
   const isContainer = !!item.isContainer;
-  const childrenSum = kids.reduce((s, k) => s + itemTotalValue(k), 0);
   const qty = item.quantity ?? 1;
   const cat = categoriesById.get(item.categoryId);
   const catIconNode = cat ? renderCategoryIcon(resolveCategoryIcon(cat), 16) : null;
@@ -661,14 +660,6 @@ function ItemRow({
               {!hidden && qty > 1 && (
                 <div className="text-[10px] text-neutral-400 tabular-nums">
                   {qty} × {formatDKK(item.currentValue)}
-                </div>
-              )}
-              {!hidden && isContainer && hasKids && (
-                <div
-                  className="text-[10px] text-neutral-400 tabular-nums"
-                  title="Sum af kort indeni"
-                >
-                  Σ {formatDKK(childrenSum)}
                 </div>
               )}
             </>

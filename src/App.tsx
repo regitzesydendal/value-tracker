@@ -8,6 +8,8 @@ import { AuthGate } from "./components/AuthGate";
 import { SnapshotButton } from "./components/SnapshotButton";
 import { HistoryView } from "./components/HistoryView";
 import { CsvImportModal } from "./components/CsvImportModal";
+import { CollectrImportModal } from "./components/CollectrImportModal";
+import { rollUpContainers } from "./lib/itemCalc";
 import { WishlistView } from "./components/WishlistView";
 import { WishlistFormModal } from "./components/WishlistFormModal";
 import { AllocationChart } from "./components/AllocationChart";
@@ -45,7 +47,9 @@ export default function App() {
 
 function TrackerApp({ session }: { session: Session }) {
   const userId = session.user.id;
-  const [data, setData] = useState<AppData>({ categories: [], items: [] });
+  const [rawData, setData] = useState<AppData>({ categories: [], items: [] });
+  // Containers that hold items show (and count as) the sum of their contents.
+  const data = useMemo(() => rollUpContainers(rawData), [rawData]);
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [view, setView] = useState<"list" | "history" | "wishlist">("list");
@@ -71,6 +75,7 @@ function TrackerApp({ session }: { session: Session }) {
 
   const [editMode, setEditMode] = useState(false);
   const [csvOpen, setCsvOpen] = useState(false);
+  const [collectrOpen, setCollectrOpen] = useState(false);
 
   async function refreshSnapshots() {
     try {
@@ -182,10 +187,17 @@ function TrackerApp({ session }: { session: Session }) {
     if (!q) {
       return data.items.filter((i) => !i.parentId && isInCat(i));
     }
-    // With search: include any top-level item that matches OR whose child matches
+    // With search: include any top-level item that matches OR that contains a
+    // match somewhere inside it (containers can be nested).
+    const byId = new Map(data.items.map((i) => [i.id, i]));
     const parentIdsWithMatchingChild = new Set<string>();
     for (const i of data.items) {
-      if (i.parentId && matches(i)) parentIdsWithMatchingChild.add(i.parentId);
+      if (!i.parentId || !matches(i)) continue;
+      let p = byId.get(i.parentId);
+      while (p && !parentIdsWithMatchingChild.has(p.id)) {
+        parentIdsWithMatchingChild.add(p.id);
+        p = p.parentId ? byId.get(p.parentId) : undefined;
+      }
     }
     return data.items.filter(
       (i) =>
@@ -697,6 +709,22 @@ function TrackerApp({ session }: { session: Session }) {
         onImported={async () => {
           const fresh = await loadData(userId);
           setData(fresh);
+        }}
+        onOpenCollectr={() => {
+          setCsvOpen(false);
+          setCollectrOpen(true);
+        }}
+      />
+
+      <CollectrImportModal
+        open={collectrOpen}
+        userId={userId}
+        categories={data.categories}
+        items={rawData.items}
+        onClose={() => setCollectrOpen(false)}
+        onImported={async () => {
+          setData(await loadData(userId));
+          scheduleAutoSnapshot();
         }}
       />
 
