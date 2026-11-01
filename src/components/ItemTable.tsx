@@ -10,7 +10,7 @@ import {
   ContainerIcon,
 } from "../lib/categoryIcons";
 import { useHideValues, MONEY_MASK } from "../lib/hideValues";
-import { GradeBadge } from "../lib/gradeBadge";
+import { FolderBadge, GradeBadge } from "../lib/gradeBadge";
 
 const fieldLabels: Record<FieldKey, string> = {
   serial: "N.",
@@ -234,19 +234,53 @@ export function ItemTable({
     });
   }
 
-  // One group per category (in sidebar order), each holding its sorted items.
-  const groups = useMemo(() => {
+  // Groups for the "Alle" view: a top-level container that holds items (e.g.
+  // "Collectr") is its own group listing what's inside it; everything else is
+  // grouped per category (in sidebar order).
+  type Group = {
+    key: string;
+    title: string;
+    icon: React.ReactNode;
+    color?: string;
+    groupItems: Item[];
+    total: number;
+    container?: Item;
+  };
+  const groups = useMemo((): Group[] | null => {
     if (!grouped) return null;
+    const containerGroups: Group[] = [];
     const byCat = new Map<string, Item[]>();
     for (const it of sortedItems) {
+      const kids = childrenByParent.get(it.id);
+      if (it.isContainer && kids?.length) {
+        containerGroups.push({
+          key: it.id,
+          title: it.name,
+          icon: <ContainerIcon size={18} />,
+          color: "#f5c542",
+          groupItems: comparator ? [...kids].sort(comparator) : kids,
+          total: itemTotalValue(it),
+          container: it,
+        });
+        continue;
+      }
       const arr = byCat.get(it.categoryId) ?? [];
       arr.push(it);
       byCat.set(it.categoryId, arr);
     }
-    return [...byCat.entries()]
+    const catGroups = [...byCat.entries()]
       .map(([catId, groupItems]) => ({ cat: categoriesById.get(catId), catId, groupItems }))
-      .sort((a, b) => (a.cat?.order ?? 0) - (b.cat?.order ?? 0));
-  }, [grouped, sortedItems, categoriesById]);
+      .sort((a, b) => (a.cat?.order ?? 0) - (b.cat?.order ?? 0))
+      .map(({ cat, catId, groupItems }) => ({
+        key: catId,
+        title: cat?.name ?? "Uden kategori",
+        icon: cat ? renderCategoryIcon(resolveCategoryIcon(cat), 18) : null,
+        color: cat ? resolveCategoryColor(cat) : undefined,
+        groupItems,
+        total: groupItems.reduce((s, i) => s + itemTotalValue(i), 0),
+      }));
+    return [...containerGroups, ...catGroups];
+  }, [grouped, sortedItems, categoriesById, childrenByParent, comparator]);
 
   const total = items.reduce((s, i) => s + itemTotalValue(i), 0);
   const totalBought = items.reduce((s, i) => s + (itemTotalBought(i) ?? 0), 0);
@@ -332,14 +366,12 @@ export function ItemTable({
           </tr>
         </thead>
         {groups ? (
-          groups.map(({ cat, catId, groupItems }) => {
-            const open = openGroups.has(catId);
-            const groupTotal = groupItems.reduce((s, i) => s + itemTotalValue(i), 0);
-            const color = cat ? resolveCategoryColor(cat) : undefined;
+          groups.map(({ key, title, icon, color, groupItems, total: groupTotal, container }) => {
+            const open = openGroups.has(key);
             return (
-              <tbody key={catId}>
+              <tbody key={key}>
                 <tr
-                  onClick={() => toggleGroup(catId)}
+                  onClick={() => toggleGroup(key)}
                   className="border-t border-neutral-200 bg-neutral-50 hover:bg-neutral-100 cursor-pointer select-none"
                 >
                   <td
@@ -349,9 +381,21 @@ export function ItemTable({
                   >
                     <div className="flex items-center gap-2">
                       <span className="text-neutral-400 text-xs w-4">{open ? "▼" : "▶"}</span>
-                      {cat && renderCategoryIcon(resolveCategoryIcon(cat), 18)}
-                      <span className="font-semibold text-neutral-900">{cat?.name ?? "Uden kategori"}</span>
+                      {icon}
+                      <span className="font-semibold text-neutral-900">{title}</span>
                       <span className="text-xs text-neutral-500">{groupItems.length}</span>
+                      {container && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit(container);
+                          }}
+                          className="text-xs px-1.5 py-0.5 rounded hover:bg-neutral-200 text-neutral-500"
+                          title="Rediger"
+                        >
+                          ✎
+                        </button>
+                      )}
                       <span className="ml-auto font-semibold tabular-nums">
                         {mask(formatDKK(groupTotal))}
                       </span>
@@ -436,8 +480,11 @@ function ItemRow({
   const catColor = cat ? resolveCategoryColor(cat) : undefined;
   // Containers get their own "C" emblem + gold accent; everything else keeps its
   // own category icon/colour (children included).
-  const iconNode = isContainer ? <ContainerIcon size={16} /> : catIconNode;
-  const accentColor = isContainer ? "#f5c542" : catColor;
+  // Only top-level containers get the gold "C"; folders inside one (e.g. the
+  // Collectr portfolios) keep their category's logo and get a folder tag.
+  const isTopContainer = isContainer && !item.parentId;
+  const iconNode = isTopContainer ? <ContainerIcon size={16} /> : catIconNode;
+  const accentColor = isTopContainer ? "#f5c542" : catColor;
   const gain = itemGain(item);
 
   return (
@@ -478,7 +525,11 @@ function ItemRow({
               column so names line up. */}
           <span className="flex items-center gap-2">
             {!showCategory && iconNode && <span className="shrink-0">{iconNode}</span>}
-            {item.grade && <GradeBadge grade={item.grade} />}
+            {item.grade ? (
+              <GradeBadge grade={item.grade} />
+            ) : (
+              isContainer && !isTopContainer && <FolderBadge name={item.name} />
+            )}
           </span>
         </td>
         <td

@@ -61,3 +61,46 @@ export function GradeBadge({ grade }: { grade: string }) {
     </span>
   );
 }
+
+// Small folder glyph for generic folder tags.
+function FolderIcon() {
+  return (
+    <svg width="11" height="9" viewBox="0 0 11 9" aria-hidden className="shrink-0">
+      <path d="M0.5 1.5 a1 1 0 0 1 1-1 h2.6 l1 1.2 h4.4 a1 1 0 0 1 1 1 v4.8 a1 1 0 0 1-1 1 h-8 a1 1 0 0 1-1-1z" fill="currentColor" opacity="0.85" />
+    </svg>
+  );
+}
+
+const gradient = (from: string, to: string, edge: string, text: string): CSSProperties => ({
+  backgroundImage: `linear-gradient(135deg, ${from}, ${to})`,
+  border: `1px solid ${edge}`,
+  color: text,
+});
+
+// Tag for a folder inside a container (e.g. the Collectr portfolios), styled
+// after what the folder holds — slabs, sealed, for sale, promos, a master set.
+const folderKinds: { test: RegExp; label: string; style: CSSProperties; icon: () => React.ReactNode }[] = [
+  { test: /slab|psa|graded/i, label: "Slabs", style: styles["psa 9"], icon: SlabIcon },
+  { test: /sealed/i, label: "Sealed", style: styles.sealed, icon: () => null },
+  { test: /sale|salg/i, label: "Til salg", style: gradient("#d1fae5", "#6ee7b7", "#34d399", "#065f46"), icon: () => <span aria-hidden>🏷️</span> },
+  { test: /promo/i, label: "Promo", style: gradient("#ede9fe", "#c4b5fd", "#a78bfa", "#4c1d95"), icon: () => <span aria-hidden>★</span> },
+  { test: /master\s*set/i, label: "Masterset", style: gradient("#dbeafe", "#93c5fd", "#60a5fa", "#1e3a8a"), icon: () => <span aria-hidden>◆</span> },
+  { test: /condition|played|damaged/i, label: "Slidte", style: gradient("#fef3c7", "#fcd34d", "#f59e0b", "#78350f"), icon: () => <span aria-hidden>⚠</span> },
+  { test: /\bny|nye|new\b/i, label: "Nye", style: gradient("#dcfce7", "#86efac", "#4ade80", "#14532d"), icon: () => <span aria-hidden>✦</span> },
+  { test: /one\s*piece/i, label: "One Piece", style: gradient("#fee2e2", "#fca5a5", "#f87171", "#7f1d1d"), icon: () => <span aria-hidden>☠</span> },
+];
+
+export function FolderBadge({ name }: { name: string }) {
+  const kind = folderKinds.find((k) => k.test.test(name));
+  const style = kind?.style ?? gradient("#f1f5f9", "#cbd5e1", "#94a3b8", "#334155");
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap"
+      style={style}
+      title="Mappe"
+    >
+      {kind ? kind.icon() : <FolderIcon />}
+      {kind?.label ?? "Mappe"}
+    </span>
+  );
+}
